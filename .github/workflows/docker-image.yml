@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.vars.outputs.version }}
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -21,7 +20,7 @@ jobs:
       - name: Extract Version from Git Tag
         id: vars
         run: |
-          VERSION=$(git describe --tags --abbrev=0)
+          VERSION=$(git describe --tags --abbrev=0 || echo "v0.0.0")
           echo "version=${VERSION}" >> $GITHUB_ENV
           echo "::set-output name=version::${VERSION}"
 
