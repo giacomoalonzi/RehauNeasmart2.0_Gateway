@@ -1,31 +1,28 @@
-# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
-# FROM python:3.9-slim
+# Use a lightweight Python base image
+FROM python:3.9-alpine
 
-# ENV PYTHONUNBUFFERED=1
+# Install system dependencies
+RUN apk add --no-cache gcc musl-dev libffi-dev make
 
-# COPY src /
+# Set the working directory
+WORKDIR /app
 
-# HEALTHCHECK --interval=2m --timeout=3s \
-#     CMD curl -f http://localhost:5000/health || exit 1
+# Copy requirements first to leverage Docker's layer caching
+COPY requirements.txt /app/requirements.txt
 
-# WORKDIR /
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# RUN pip3 install -r requirements.txt
-# CMD ["python3", "main.py"]
+# Copy the application code
+COPY src /app/src
+
+# Copy the data directory (including options.json)
+COPY data /app/data
 
 
-# https://developers.home-assistant.io/docs/add-ons/configuration#add-on-dockerfile
-FROM python:3.9-slim
-
-ENV PYTHONUNBUFFERED=1
-
-COPY src /
-
+# Healthcheck for the container
 HEALTHCHECK --interval=2m --timeout=3s \
     CMD curl -f http://localhost:5000/health || exit 1
 
-WORKDIR /
-
-RUN pip3 install -r requirements.txt
-CMD ["python3", "main.py"]
-
+# Define the entrypoint
+CMD ["python3", "src/main.py"]
