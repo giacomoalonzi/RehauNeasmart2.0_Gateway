@@ -1,27 +1,32 @@
 import struct
 
-def pack_dpt9001(f):
+
+class DPT9001Error(Exception):
+    """Custom exception for DPT 9001 encoding/decoding errors."""
+    pass
+
+
+def pack_dpt9001(value):
     """
     Packs a floating-point value into a 16-bit integer according to the DPT 9001 standard.
 
-    The DPT 9001 format is used in building automation systems to represent floating-point values
-    in a compact 16-bit format. This function converts a floating-point value into this format.
-
     Args:
-        f (float): The floating-point value to be packed.
+        value (float): The floating-point value to be packed.
 
     Returns:
         int: The 16-bit integer representation of the floating-point value.
+
+    Raises:
+        DPT9001Error: If the input value is out of range.
     """
-    buffer = bytearray([0, 0])  # Initialize a 2-byte buffer
+    if not isinstance(value, (float, int)):
+        raise TypeError("Value must be a float or int.")
 
-    # Clamp the input value to the range supported by DPT 9001
-    if f > 670760.96:
-        f = 670760.96
-    elif f < -671088.64:
-        f = -671088.64
+    # Clamp the value within the supported range
+    if value > 670760.96 or value < -671088.64:
+        raise DPT9001Error(f"Value {value} is out of range for DPT 9001 encoding.")
 
-    signed_mantissa = int(f * 100)  # Convert the float to an integer mantissa
+    signed_mantissa = int(value * 100)  # Convert the float to an integer mantissa
     exp = 0  # Initialize the exponent
 
     # Normalize the mantissa to fit within 11 bits
@@ -29,46 +34,45 @@ def pack_dpt9001(f):
         signed_mantissa //= 2
         exp += 1
 
-    # Pack the exponent into the buffer (4 bits)
-    buffer[0] |= (exp & 15) << 3
+    # Prepare the 16-bit buffer
+    buffer = bytearray(2)
+    buffer[0] = (exp & 0x0F) << 3  # Encode the exponent
 
-    # Handle the sign bit and adjust the mantissa if negative
     if signed_mantissa < 0:
-        signed_mantissa += 2048
-        buffer[0] |= 1 << 7
+        signed_mantissa += 2048  # Handle the sign bit
+        buffer[0] |= 0x80
 
-    mantissa = signed_mantissa
+    buffer[0] |= (signed_mantissa >> 8) & 0x07  # Add the high bits of the mantissa
+    buffer[1] = signed_mantissa & 0xFF  # Add the low bits of the mantissa
 
-    # Pack the mantissa into the buffer (11 bits)
-    buffer[0] |= ((mantissa >> 8) & 7) & 0xFF
-    buffer[1] |= mantissa & 0xFF
+    # Pack into a 16-bit integer
+    return struct.unpack(">H", buffer)[0]
 
-    # Convert the buffer to a 16-bit integer
-    return struct.unpack('>H', buffer)[0]
 
-def unpack_dpt9001(i):
+def unpack_dpt9001(value):
     """
     Unpacks a 16-bit integer into a floating-point value according to the DPT 9001 standard.
 
-    The DPT 9001 format is used in building automation systems to represent floating-point values
-    in a compact 16-bit format. This function converts a 16-bit integer in this format back into
-    a floating-point value.
-
     Args:
-        i (int): The 16-bit integer to be unpacked.
+        value (int): The 16-bit integer to be unpacked.
 
     Returns:
         float: The floating-point representation of the 16-bit integer.
     """
-    h = (i >> 8) & 0xFF  # Extract the high byte
-    l = i & 0xFF  # Extract the low byte
+    if not isinstance(value, int):
+        raise TypeError("Value must be an integer.")
 
-    m = (int(h) & 7) << 8 | int(l)  # Combine the mantissa bits
-    if (h & 0x80) == 0x80:  # Check the sign bit
-        m -= 2048  # Adjust the mantissa if negative
+    # Extract the high and low bytes
+    h = (value >> 8) & 0xFF
+    l = value & 0xFF
 
-    e = (h >> 3) & 15  # Extract the exponent
+    # Extract the mantissa and handle the sign bit
+    mantissa = ((h & 0x07) << 8) | l
+    if h & 0x80:
+        mantissa -= 2048
 
-    f = 0.01 * float(m) * float(1 << e)  # Calculate the floating-point value
+    # Extract the exponent
+    exponent = (h >> 3) & 0x0F
 
-    return round(f, 2)  # Return the value rounded to 2 decimal places
+    # Calculate the floating-point value
+    return round(mantissa * 0.01 * (1 << exponent), 2)

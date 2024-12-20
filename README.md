@@ -177,6 +177,124 @@ The container supports the following environment variables for configuration:
 
 ---
 
+# Running Tests for DPT 9001 Encoding/Decoding
+
+This document explains how to run the unit tests for the DPT 9001 encoding/decoding logic in your project.
+
+---
+
+## Setting Up the Environment
+
+Before running the tests, ensure you have a virtual environment set up and activated:
+
+1. **Create a Virtual Environment**:
+
+   ```bash
+   python3 -m venv venv
+   ```
+
+2. **Activate the Virtual Environment**:
+
+   ```bash
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies**:
+   Ensure all required dependencies are installed using:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
+## Running the Tests
+
+Once your environment is ready, you can execute the tests as follows:
+
+1. Navigate to the directory containing your test file:
+
+   ```bash
+   cd /path/to/your/project/src
+   ```
+
+2. Run the tests using Python's `unittest` module:
+
+   ```bash
+   python -m unittest test_dpt_9001
+   ```
+
+3. Expected Output:
+   If all tests pass, you will see:
+
+   ```
+   Ran 3 tests in 0.000s
+
+   OK
+   ```
+
+---
+
+## Troubleshooting
+
+If any test fails:
+
+1. Review the error message to identify the specific test case.
+2. Check the implementation of the encoding/decoding logic in `dpt_9001.py`.
+3. Ensure the virtual environment is correctly configured and dependencies are installed.
+
+---
+
+## Adding Tests
+
+You can add new test cases by editing the `test_dpt_9001.py` file. For example, to test additional values:
+
+```python
+def test_additional_values(self):
+    test_values = [0.01, -0.01, 670760.96, -671088.64]
+    for value in test_values:
+        with self.subTest(value=value):
+            encoded = pack_dpt9001(value)
+            decoded = unpack_dpt9001(encoded)
+            self.assertAlmostEqual(decoded, value, delta=2.5)
+```
+
+Run the updated test suite to ensure all new cases are verified.
+
+---
+
+## Integration with CI/CD
+
+For continuous testing, integrate these tests into your CI/CD pipeline (e.g., GitHub Actions). Here's an example YAML snippet:
+
+```yaml
+name: Test and Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r src/requirements.txt
+
+      - name: Run Unit Tests
+        run: python -m unittest src/test_dpt_9001.py
+```
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please follow these steps to submit a pull request:
