@@ -162,6 +162,7 @@ def zone(base_id=None, zone_id=None):
         payload = request.json
         op_state = payload.get("state")
         setpoint = payload.get("setpoint")
+        dpt_9001_setpoint = None
         if op_state is None and setpoint is None:
             return app.response_class(
                 response=json.dumps({"err": "one of state or setpoint need to be specified"}),
@@ -189,6 +190,7 @@ def zone(base_id=None, zone_id=None):
                     mimetype='application/json'
                 )
             dpt_9001_setpoint = dpt_9001.pack_dpt9001(setpoint)
+            print("dpt_9001_setpoint", dpt_9001_setpoint)
             if not isinstance(dpt_9001_setpoint, list):
                 dpt_9001_setpoint = [dpt_9001_setpoint]
             context[slave_id].setValues(
@@ -197,7 +199,8 @@ def zone(base_id=None, zone_id=None):
                 dpt_9001_setpoint)
 
         response = app.response_class(
-            status=202
+            status=202,
+            response=json.dumps({"dpt_9001_setpoint": dpt_9001_setpoint})
         )
 
     return response

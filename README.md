@@ -1,38 +1,317 @@
-# Rehau Neasmart 2.0 Gateway Add-On
+# Rehau Neasmart 2.0 Gateway
 
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/matteomanzoni)
+> **Disclaimer**: This is a Docker-based port of the [original project](https://github.com/MatteoManzoni/RehauNeasmart2.0_Gateway), designed for integration with Home Assistant. It acts as a bridge between the Rehau Neasmart 2.0 SysBus (Modbus variant) and Home Assistant, exposing it as a climate entity.
 
+## Overview
 
-This Add-On simulates a Modbus slave through serial or ModbusTCP in order to iteract with a Rehau Neasmart 2.0 system, it exposes a set of RESTful apis to control the systems through an Homeassistant custom component.
+This project provides a gateway to integrate **Rehau Neasmart 2.0** with **Home Assistant** via REST APIs. It enables communication over both Modbus TCP and Modbus Serial, allowing for versatile deployment scenarios. The gateway is designed for core Home Assistant installations and supports persistent register storage.
 
-This Add-On requires a Serial to USB adapter or a ModbusRTU Slave to ModbusTCP adapter. (ModbusRTU over TCP or ModbusRTU over UDP can be supported but are not at this time)
-Something like an ESP or an Arduino works but many cheap off-the-shelf devices work too (eg. [this one I'm using now with PoE and DIN rail mounting](https://www.waveshare.com/wiki/RS485_TO_POE_ETH_(B)))
+### Key Features
 
-[Add-on documentation](./rehau_neasmart2.0_gateway/DOCS.md)
+- **REST API** for easy interaction.
+- Modbus TCP and Serial (RS485) support.
+- SQLite-based persistent register storage.
+- Configurable via environment variables.
+- Dockerized for portability.
 
-[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2FMatteoManzoni%2FRehauNeasmart2.0_Gateway)
+---
 
-## Add-ons
+## Installation
 
-This repository contains the following add-ons
+### Prerequisites
 
-### [Rehau Neasmart 2.0 Gateway Add-On](./rehau_neasmart2.0_gateway/)
+- Docker installed on your system.
+- Access to the Rehau Neasmart 2.0 SysBus interface.
+- Optional: RS485-to-TCP adapter (e.g., Waveshare RS485 PoE Gateway).
 
-![Supports aarch64 Architecture][aarch64-shield]
-![Supports amd64 Architecture][amd64-shield]
-![Supports armhf Architecture][armhf-shield]
-![Supports armv7 Architecture][armv7-shield]
-![Supports i386 Architecture][i386-shield]
+### Setup Steps
 
-_Modbus Slave <> REST shim between a Rehau Neasmart 2.0 system and Homeassistant._
+1. **Clone the Repository**:
 
-[aarch64-shield]: https://img.shields.io/badge/aarch64-yes-green.svg
-[amd64-shield]: https://img.shields.io/badge/amd64-yes-green.svg
-[armhf-shield]: https://img.shields.io/badge/armhf-yes-green.svg
-[armv7-shield]: https://img.shields.io/badge/armv7-yes-green.svg
-[i386-shield]: https://img.shields.io/badge/i386-yes-green.svg
+   ```bash
+   git clone https://github.com/your-username/RehauNeasmart2.0_Gateway.git
+   cd RehauNeasmart2.0_Gateway
+   ```
 
-### Disclaimer
+2. **Build the Docker Image**:
 
-Rehau, I asked you for your support and approval, you never answered, what I did was to give the community the choice to not be bound to KNX.
-No IP was violated, no reverse engineering was involved, let's keep the discussion civil
+   ```bash
+   docker build -t rehauneasmart-gateway .
+   ```
+
+3. **Run the Docker Container**:
+   ```bash
+   docker run -d \
+       --name rehauneasmart-gateway \
+       -p 502:502 \
+       -e LISTEN_ADDRESS="0.0.0.0" \
+       -e LISTEN_PORT=502 \
+       -e SERVER_TYPE="tcp" \
+       -e SLAVE_ID=240 \
+       rehauneasmart-gateway
+   ```
+
+---
+
+## REST API Reference
+
+Below are the available API endpoints for interacting with the gateway.
+
+### **1. Check Gateway Health**
+
+- **Endpoint**: `GET /health`
+- **Description**: Check if the gateway is running properly.
+- **Example**:
+  ```bash
+  curl -X GET http://localhost:5000/health
+  ```
+  **Response**:
+  ```
+  OK
+  ```
+
+---
+
+### **2. Read Zone Information**
+
+- **Endpoint**: `GET /zones/<base_id>/<zone_id>`
+- **Description**: Retrieve the current state, setpoint, temperature, and humidity of a specific zone.
+- **Example**:
+  ```bash
+  curl -X GET http://localhost:5000/zones/1/1
+  ```
+  **Response**:
+  ```json
+  {
+    "state": 3,
+    "setpoint": 21.5,
+    "temperature": 22.0,
+    "relative_humidity": 45
+  }
+  ```
+
+---
+
+### **3. Set Zone Parameters**
+
+- **Endpoint**: `POST /zones/<base_id>/<zone_id>`
+- **Description**: Update the operating state or setpoint of a specific zone.
+- **Example**:
+  ```bash
+  curl -X POST http://localhost:5000/zones/1/1 \
+  -H "Content-Type: application/json" \
+  -d '{"setpoint": 22.5}'
+  ```
+  **Response**:
+  ```json
+  {
+    "dpt_9001_setpoint": [28729]
+  }
+  ```
+
+---
+
+### **4. Retrieve Outside Temperature**
+
+- **Endpoint**: `GET /outsidetemperature`
+- **Description**: Get the current outside temperature and filtered outside temperature.
+- **Example**:
+  ```bash
+  curl -X GET http://localhost:5000/outsidetemperature
+  ```
+  **Response**:
+  ```json
+  {
+    "outside_temperature": 15.2,
+    "filtered_outside_temperature": 15.0
+  }
+  ```
+
+---
+
+## Configuration
+
+The container supports the following environment variables for configuration:
+
+| Variable         | Description                          | Default   |
+| ---------------- | ------------------------------------ | --------- |
+| `LISTEN_ADDRESS` | Address to bind the server.          | `0.0.0.0` |
+| `LISTEN_PORT`    | Port to listen for connections.      | `502`     |
+| `SERVER_TYPE`    | Connection type (`tcp` or `serial`). | `tcp`     |
+| `SLAVE_ID`       | Modbus slave ID.                     | `240`     |
+
+---
+
+## Debugging Tips
+
+- **Check Logs**:
+  Use `docker logs` to view container logs for debugging.
+
+  ```bash
+  docker logs rehauneasmart-gateway
+  ```
+
+- **Inspect SQLite Database**:
+  The register state is stored in `/data/registers.db`. Use any SQLite browser to inspect its contents.
+
+- **Rebuild Container**:
+  If changes are made to the code, rebuild the container:
+  ```bash
+  docker build --no-cache -t rehauneasmart-gateway .
+  ```
+
+---
+
+## Known Issues
+
+1. **Database Initialization**:
+
+   - On first startup, the database initializes with zeroed registers. You may need to manually update them to start reflecting changes.
+
+2. **Register Updates**:
+
+   - If changes occur via other means (e.g., thermostat or app) while the gateway is down, the values may not sync automatically.
+
+3. **Flask Development Server**:
+   - The gateway uses Flask’s development server, which is not optimized for high concurrency.
+
+---
+
+# Running Tests for DPT 9001 Encoding/Decoding
+
+This document explains how to run the unit tests for the DPT 9001 encoding/decoding logic in your project.
+
+---
+
+## Setting Up the Environment
+
+Before running the tests, ensure you have a virtual environment set up and activated:
+
+1. **Create a Virtual Environment**:
+
+   ```bash
+   python3 -m venv venv
+   ```
+
+2. **Activate the Virtual Environment**:
+
+   ```bash
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies**:
+   Ensure all required dependencies are installed using:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+---
+
+## Running the Tests
+
+Once your environment is ready, you can execute the tests as follows:
+
+1. Navigate to the directory containing your test file:
+
+   ```bash
+   cd /path/to/your/project/src
+   ```
+
+2. Run the tests using Python's `unittest` module:
+
+   ```bash
+   python -m unittest test_dpt_9001
+   ```
+
+3. Expected Output:
+   If all tests pass, you will see:
+
+   ```
+   Ran 3 tests in 0.000s
+
+   OK
+   ```
+
+---
+
+## Troubleshooting
+
+If any test fails:
+
+1. Review the error message to identify the specific test case.
+2. Check the implementation of the encoding/decoding logic in `dpt_9001.py`.
+3. Ensure the virtual environment is correctly configured and dependencies are installed.
+
+---
+
+## Adding Tests
+
+You can add new test cases by editing the `test_dpt_9001.py` file. For example, to test additional values:
+
+```python
+def test_additional_values(self):
+    test_values = [0.01, -0.01, 670760.96, -671088.64]
+    for value in test_values:
+        with self.subTest(value=value):
+            encoded = pack_dpt9001(value)
+            decoded = unpack_dpt9001(encoded)
+            self.assertAlmostEqual(decoded, value, delta=2.5)
+```
+
+Run the updated test suite to ensure all new cases are verified.
+
+---
+
+## Integration with CI/CD
+
+For continuous testing, integrate these tests into your CI/CD pipeline (e.g., GitHub Actions). Here's an example YAML snippet:
+
+```yaml
+name: Test and Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r src/requirements.txt
+
+      - name: Run Unit Tests
+        run: python -m unittest src/test_dpt_9001.py
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Please follow these steps to submit a pull request:
+
+1. Fork the repository.
+2. Create a new branch for your feature or bugfix.
+3. Commit your changes.
+4. Submit a pull request.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+
+---
+
+## Support
+
+For any questions or issues, open an issue on [GitHub](https://github.com/your-username/RehauNeasmart2.0_Gateway/issues).
