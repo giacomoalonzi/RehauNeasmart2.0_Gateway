@@ -1,9 +1,9 @@
-name: Test, Changelog, and Build Docker
+name: Test and Build Docker
 
 on:
   push:
     branches:
-      - main # Esegui il workflow solo sui merge in `main`
+      - main
 
 jobs:
   extract-version:
@@ -26,7 +26,7 @@ jobs:
 
   test:
     name: Run Unit Tests
-    needs: extract-version # Dipende dall'estrazione della versione
+    needs: extract-version
     runs-on: ubuntu-latest
 
     steps:
@@ -49,39 +49,9 @@ jobs:
           source venv/bin/activate
           python -m unittest discover src
 
-  changelog:
-    name: Update Changelog
-    needs: test # Esegui solo dopo i test
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Debug Version
-        env:
-          VERSION: ${{ needs.extract-version.outputs.version }}
-        run: echo "Version to use for changelog -> $VERSION"
-
-      - name: Set up git-chglog
-        run: |
-          wget https://github.com/git-chglog/git-chglog/releases/download/v0.15.1/git-chglog_0.15.1_linux_amd64.tar.gz
-          tar -xvf git-chglog_0.15.1_linux_amd64.tar.gz -C /usr/local/bin
-
-      - name: Generate Changelog
-        run: |
-          if [ -z "${{ needs.extract-version.outputs.version }}" ]; then
-            echo "Version not set. Exiting."
-            exit 1
-          fi
-          git-chglog --next-tag ${{ needs.extract-version.outputs.version }} > changelog.md
-          git add changelog.md
-          git commit -m "Update changelog for version ${{ needs.extract-version.outputs.version }}"
-          git push origin main
-
   build:
     name: Build and Push Docker Image
-    needs: changelog # Dipende dall'aggiornamento del changelog
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
