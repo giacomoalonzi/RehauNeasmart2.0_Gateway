@@ -1,16 +1,81 @@
-name: Build and Push Docker Image
+name: Test, Changelog, and Build Docker
 
 on:
   push:
     branches:
-      - main # Sostituisci con il branch che preferisci monitorare
+      - main # Esegui il workflow solo sui merge in `main`
 
 jobs:
-  build:
+  extract-version:
+    name: Extract Version from Git Tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Extract Version from Git Tag
+        id: vars
+        run: |
+          VERSION=$(git describe --tags --abbrev=0)
+          echo "version=${VERSION}" >> $GITHUB_ENV
+          echo "::set-output name=version::${VERSION}"
+
+  test:
+    name: Run Unit Tests
+    needs: extract-version # Dipende dall'estrazione della versione
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r src/requirements.txt
+
+      - name: Run Unit Tests
+        run: |
+          source venv/bin/activate
+          python -m unittest discover src
+
+  changelog:
+    name: Update Changelog
+    needs: test # Esegui solo dopo i test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up git-chglog
+        run: |
+          wget https://github.com/git-chglog/git-chglog/releases/download/v0.15.1/git-chglog_0.15.1_linux_amd64.tar.gz
+          tar -xvf git-chglog_0.15.1_linux_amd64.tar.gz -C /usr/local/bin
+
+      - name: Generate Changelog
+        run: |
+          git-chglog --next-tag ${{ needs.extract-version.outputs.version }} > changelog.md
+          git add changelog.md
+          git commit -m "Update changelog for version ${{ needs.extract-version.outputs.version }}"
+          git push origin main
+
+  build:
+    name: Build and Push Docker Image
+    needs: changelog # Dipende dall'aggiornamento del changelog
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
@@ -22,13 +87,12 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           platforms: linux/arm64,linux/amd64
-          tags: giacomoalonzi/rehauneasmart_2_0_gateway:latest
-
-      - name: Post build cleanup
-        run: docker system prune -f
+          tags: |
+            giacomoalonzi/rehauneasmart_2_0_gateway:${{ needs.extract-version.outputs.version }}
+            giacomoalonzi/rehauneasmart_2_0_gateway:latest
