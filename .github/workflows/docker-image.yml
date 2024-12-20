@@ -23,7 +23,7 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0 || echo "v0.0.0")
           echo "version=${VERSION}" >> $GITHUB_ENV
           echo "::set-output name=version::${VERSION}"
-          
+
   test:
     name: Run Unit Tests
     needs: extract-version # Dipende dall'estrazione della versione
@@ -61,7 +61,7 @@ jobs:
       - name: Debug Version
         env:
           VERSION: ${{ needs.extract-version.outputs.version }}
-        run: echo "Version to use for changelog: $VERSION"
+        run: echo "Version to use for changelog -> $VERSION"
 
       - name: Set up git-chglog
         run: |
