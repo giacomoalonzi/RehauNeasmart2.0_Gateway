@@ -70,7 +70,6 @@ jobs:
           git add changelog.md
           git commit -m "Update changelog for version ${{ needs.extract-version.outputs.version }}"
           git push origin main
-
   build:
     name: Build and Push Docker Image
     needs: changelog # Dipende dall'aggiornamento del changelog
