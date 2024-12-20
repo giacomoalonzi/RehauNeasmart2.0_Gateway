@@ -23,7 +23,7 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0 || echo "v0.0.0")
           echo "version=${VERSION}" >> $GITHUB_ENV
           echo "::set-output name=version::${VERSION}"
-
+          
   test:
     name: Run Unit Tests
     needs: extract-version # Dipende dall'estrazione della versione
@@ -58,6 +58,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Debug Version
+        env:
+          VERSION: ${{ needs.extract-version.outputs.version }}
+        run: echo "Version to use for changelog: $VERSION"
+
       - name: Set up git-chglog
         run: |
           wget https://github.com/git-chglog/git-chglog/releases/download/v0.15.1/git-chglog_0.15.1_linux_amd64.tar.gz
@@ -65,10 +70,15 @@ jobs:
 
       - name: Generate Changelog
         run: |
+          if [ -z "${{ needs.extract-version.outputs.version }}" ]; then
+            echo "Version not set. Exiting."
+            exit 1
+          fi
           git-chglog --next-tag ${{ needs.extract-version.outputs.version }} > changelog.md
           git add changelog.md
           git commit -m "Update changelog for version ${{ needs.extract-version.outputs.version }}"
           git push origin main
+
   build:
     name: Build and Push Docker Image
     needs: changelog # Dipende dall'aggiornamento del changelog
