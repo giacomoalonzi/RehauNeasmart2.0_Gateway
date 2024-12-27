@@ -76,12 +76,13 @@ jobs:
       - name: Test Docker Login
         run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Docker Image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          platforms: linux/arm64
-          tags: |
-            giacomoalonzi/rehauneasmart_2_0_gateway:${{ env.fallback_version }}
-            giacomoalonzi/rehauneasmart_2_0_gateway:latest
+          platforms: linux/arm64,linux/amd64
+          tags: giacomoalonzi/rehauneasmart_2_0_gateway:latest
+
+      - name: Post build cleanup
+        run: docker system prune -f
