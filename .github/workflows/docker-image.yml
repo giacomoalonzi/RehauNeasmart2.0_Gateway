@@ -59,6 +59,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Validate Docker Tag
         run: |
           if [ -z "${{ needs.extract-version.outputs.version }}" ]; then
@@ -81,7 +84,7 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/arm64
+          platforms: linux/arm64,linux/amd64
           tags: giacomoalonzi/rehauneasmart_2_0_gateway:latest
 
       - name: Post build cleanup
