@@ -199,29 +199,33 @@ class ModbusManager:
     def _initialize_context(self) -> None:
         """Initialize Modbus server context"""
         try:
-            # Create thread-safe data block
-            self._data_block = ThreadSafeDataBlock(
+            # Create a data block for each slave
+            self._data_block_main = ThreadSafeDataBlock(
                 self.db_manager,
                 const.REGS_STARTING_ADDR
             )
-            
-            # Create slave context
-            slave_context = ModbusSlaveContext(
-                di=None,
-                co=None,
-                hr=self._data_block,
-                ir=None,
-                zero_mode=True,
+            # Create a dummy data block for the secondary slave to avoid errors
+            self._data_block_secondary = ModbusSequentialDataBlock(0, [0] * 65536)
+
+            # Create a slave context for each slave
+            slave_context_main = ModbusSlaveContext(
+                di=None, co=None, hr=self._data_block_main, ir=None, zero_mode=True
             )
-            
-            # Create server context
+            slave_context_secondary = ModbusSlaveContext(
+                di=None, co=None, hr=self._data_block_secondary, ir=None, zero_mode=True
+            )
+
+            # Create server context with multiple slaves
             self._context = ModbusServerContext(
-                slaves={self.slave_id: slave_context},
+                slaves={
+                    const.NEASMART_SLAVE_ADDRESS_PRIMARY: slave_context_main,
+                    const.NEASMART_SLAVE_ADDRESS_SECONDARY: slave_context_secondary,
+                },
                 single=False
             )
-            
-            logger.info(f"Modbus context initialized for slave ID {self.slave_id}")
-            
+
+            logger.info(f"Modbus context initialized for slaves: {const.NEASMART_SLAVE_ADDRESS_PRIMARY}, {const.NEASMART_SLAVE_ADDRESS_SECONDARY}")
+
         except Exception as e:
             logger.error(f"Failed to initialize Modbus context: {e}")
             raise ModbusException(f"Context initialization failed: {e}")
@@ -354,10 +358,13 @@ def get_modbus_manager(slave_id: int = None, **kwargs) -> ModbusManager:
     """Get or create singleton ModbusManager instance"""
     global _modbus_manager
     
+    # Log every attempt to get the manager
+    logger.info(f"get_modbus_manager called. Requested slave_id: {slave_id}. Current singleton is for: {_modbus_manager.slave_id if _modbus_manager else 'None'}")
+    
     with _manager_lock:
         if _modbus_manager is None:
             if slave_id is None:
-                raise ValueError("slave_id must be provided for first initialization")
+                raise ValueError(f"slave_id must be provided for first initialization. Requested slave_id: {slave_id}")
             # Only allow slave_id 240 and 241
             if slave_id not in (240, 241):
                 raise ValueError(

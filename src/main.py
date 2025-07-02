@@ -11,6 +11,7 @@ import threading
 import time
 import json
 import logging
+import traceback  # Import traceback
 from typing import Dict, Any
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
@@ -283,7 +284,7 @@ def run_flask_app(app, config):
 async def run_async_main(config):
     """Run both Modbus server and Flask app"""
     global modbus_server_task
-    
+
     try:
         # Initialize managers
         db_manager, modbus_manager = initialize_managers(config)
