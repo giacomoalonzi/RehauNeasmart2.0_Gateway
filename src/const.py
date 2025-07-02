@@ -69,7 +69,6 @@ WRITE_HR_CODE = 6                        # Function code 06: Write Single Regist
 SQLITEDICT_REGS_TABLE = "holding_registers"  # Table name in local SQLite DB
 REGS_STARTING_ADDR = 0                        # Base register address for SQLite mapping
 DATASTORE_PATH = "./data/registers.db"        # Path to local DB for register storage
-ADDON_OPT_PATH = "./data/options.json"        # Path to JSON options
 
 # API state mapping (for frontend/backend logic)
 STATE_MAPPING = {

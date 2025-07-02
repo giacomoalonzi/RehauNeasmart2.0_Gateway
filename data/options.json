@@ -1,6 +1,0 @@
-{
-  "gateway_address": "0.0.0.0",
-  "gateway_port": "502",
-  "server_type": "tcp",
-  "slave_id": "240"
-}
