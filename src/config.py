@@ -303,11 +303,21 @@ def load_config(config_file: Optional[str] = None) -> AppConfig:
     Load configuration from file and environment variables.
     Environment variables take precedence over file configuration.
     """
+    # Define project root (assuming config.py is in src/)
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    
     # Start with default configuration
     config_dict = {}
     
+    # Default config file path relative to project root
+    if config_file is None:
+        config_file = os.environ.get(
+            f"{ConfigLoader.ENV_PREFIX}CONFIG_FILE",
+            os.path.join(project_root, "data", "config.json")
+        )
+
     # Load from file if provided
-    if config_file and os.path.exists(config_file):
+    if os.path.exists(config_file):
         file_config = ConfigLoader.load_from_file(config_file)
         config_dict = ConfigLoader.merge_configs(config_dict, file_config)
         logger.info(f"Loaded configuration from file: {config_file}")
@@ -318,7 +328,14 @@ def load_config(config_file: Optional[str] = None) -> AppConfig:
     
     # Create config object
     config = ConfigLoader.create_config(config_dict)
+
+    # Resolve paths to be absolute, relative to project root
+    if not os.path.isabs(config.database.path):
+        config.database.path = os.path.join(project_root, config.database.path)
     
+    if config.logging.file_path and not os.path.isabs(config.logging.file_path):
+        config.logging.file_path = os.path.join(project_root, config.logging.file_path)
+
     # Validate configuration
     ConfigValidator.validate_config(config)
     
@@ -357,12 +374,9 @@ def get_config() -> AppConfig:
     global _config
     
     if _config is None:
-        # Try to load from default location
-        default_config_file = os.environ.get(
-            f"{ConfigLoader.ENV_PREFIX}CONFIG_FILE",
-            "./data/config.json"
-        )
-        _config = load_config(default_config_file)
+        # load_config will use default if env var is not set
+        config_file = os.environ.get(f"{ConfigLoader.ENV_PREFIX}CONFIG_FILE")
+        _config = load_config(config_file)
     
     return _config
 
