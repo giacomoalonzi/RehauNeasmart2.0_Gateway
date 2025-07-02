@@ -1,0 +1,202 @@
+$schema: 'https://spec.openapis.org/oas/3.1/schema/2021-09-10'
+openapi: '3.1.0'
+info:
+  title: 'Rehau Neasmart 2.0 Gateway API'
+  version: '2.0.0'
+servers:
+  - url: '/api/v1'
+paths:
+  /zones:
+    get:
+      summary: 'List all zones'
+      parameters:
+        - name: base_id
+          in: query
+          schema:
+            type: integer
+          description: 'Filter by base ID'
+        - name: include_inactive
+          in: query
+          schema:
+            type: boolean
+          description: 'Include inactive zones'
+      responses:
+        '200':
+          description: 'A list of zones'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZonesListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /zones/{base_id}/{zone_id}:
+    get:
+      summary: 'Get specific zone information'
+      parameters:
+        - name: base_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        '200':
+          description: 'Zone information'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      summary: 'Update zone parameters'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneUpdateRequest'
+      responses:
+        '200':
+          description: 'Zone updated'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZoneUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  schemas:
+    Zone:
+      type: object
+      properties:
+        base_id:
+          type: integer
+        base_label:
+          type: string
+          nullable: true
+        zone_id:
+          type: integer
+        zone_label:
+          type: string
+          nullable: true
+        state:
+          type: integer
+        setpoint:
+          type: number
+        temperature:
+          type: number
+        relative_humidity:
+          type: integer
+        address:
+          type: integer
+      required:
+        - base_id
+        - zone_id
+        - state
+        - setpoint
+        - temperature
+        - relative_humidity
+        - address
+    ZonesListResponse:
+      type: object
+      properties:
+        zones:
+          type: array
+          items:
+            $ref: '#/components/schemas/Zone'
+        count:
+          type: integer
+        filter:
+          type: object
+          properties:
+            base_id:
+              type: integer
+              nullable: true
+            include_inactive:
+              type: boolean
+      required:
+        - zones
+        - count
+        - filter
+    ZoneUpdateRequest:
+      type: object
+      properties:
+        state:
+          type: integer
+        setpoint:
+          type: number
+      additionalProperties: false
+    ZoneUpdateResponse:
+      type: object
+      properties:
+        base_id:
+          type: integer
+        zone_id:
+          type: integer
+        updated:
+          type: object
+          properties:
+            state:
+              type: integer
+            setpoint:
+              type: number
+            setpoint_encoded:
+              type: integer
+      required:
+        - base_id
+        - zone_id
+        - updated
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        status:
+          type: integer
+      required:
+        - error
+        - status
+  responses:
+    BadRequest:
+      description: 'Bad request (validation error)'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: 'Resource not found'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: 'Modbus communication error'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InternalError:
+      description: 'Internal server error'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
