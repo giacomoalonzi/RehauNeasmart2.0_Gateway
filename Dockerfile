@@ -28,7 +28,6 @@ COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
 COPY --chown=appuser:appuser src /app/src
-COPY --chown=appuser:appuser data /app/data
 
 # Create data directory for runtime
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
