@@ -7,7 +7,7 @@ Supports both file-based and environment variable configuration with validation.
 import os
 import json
 import logging
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 import ipaddress
@@ -105,7 +105,7 @@ class AppConfig:
     enable_metrics: bool = True
     enable_swagger: bool = True
     debug_mode: bool = False
-    zones: Dict[str, Any] = field(default_factory=dict)
+    structures: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class ConfigValidator:
@@ -284,6 +284,10 @@ class ConfigLoader:
         api_config = APIConfig(**config_dict.get('api', {}))
         logging_config = LoggingConfig(**config_dict.get('logging', {}))
         
+        # For backward compatibility, rename 'zones' to 'structures'
+        if 'zones' in config_dict:
+            config_dict['structures'] = config_dict.pop('zones')
+
         # Create main config
         app_config = AppConfig(
             database=database_config,

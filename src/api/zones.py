@@ -5,7 +5,7 @@ Handles zone operations with robust error handling.
 """
 
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List
 from flask import Blueprint, request, jsonify
 
 from modbus_manager import get_modbus_manager, ModbusException
@@ -20,24 +20,19 @@ zones_bp = Blueprint('zones', __name__, url_prefix='/api/v1/zones')
 
 
 def get_zone_labels(base_id: int, zone_id: int, config: AppConfig) -> (str, str):
-    """Get labels for base and zone from configuration"""
-    zones_conf = getattr(config, 'zones', {}) or {}
-    base_conf = zones_conf.get(str(base_id), {})
-    base_label = base_conf.get('label', f"Base {base_id}")
-    zone_label = base_conf.get('zones', {}).get(str(zone_id), f"Zone {zone_id}")
-    return base_label, zone_label
+    """Get labels for base and zone from configuration."""
+    if not hasattr(config, 'structures') or not config.structures:
+        raise NotFoundError("No structures defined in the configuration.")
 
-
-def validate_base_id(base_id: int) -> None:
-    """Validate base ID"""
-    if not 1 <= base_id <= 4:
-        raise ValidationError(f"Invalid base ID: {base_id}. Must be between 1 and 4")
-
-
-def validate_zone_id(zone_id: int) -> None:
-    """Validate zone ID"""
-    if not 1 <= zone_id <= 12:
-        raise ValidationError(f"Invalid zone ID: {zone_id}. Must be between 1 and 12")
+    for structure in config.structures:
+        if structure.get('base_id') == base_id:
+            base_label = structure.get('base_label', f"Base {base_id}")
+            for zone in structure.get('zones', []):
+                if zone.get('id') == zone_id:
+                    zone_label = zone.get('label', f"Zone {zone_id}")
+                    return base_label, zone_label
+            raise NotFoundError(f"Zone with ID {zone_id} not found in base {base_id}.")
+    raise NotFoundError(f"Base with ID {base_id} not found.")
 
 
 def validate_and_convert_state(state: str) -> int:
@@ -85,40 +80,26 @@ def get_zone(base_id: int, zone_id: int):
     single configured zone.
 
     Args:
-        base_id: The ID of the base station (1-4).
-        zone_id: The ID of the zone (1-12).
+        base_id: The ID of the base station.
+        zone_id: The ID of the zone.
 
     Returns:
         A JSON object containing the zone's details.
-        Example:
-        {
-            "base": {"id": 1, "label": "Main Floor"},
-            "zone": {"id": 1, "label": "Living Room"},
-            "state": "normal",
-            "temperature": {"value": 21.5, "unit": "°C"},
-            "setpoint": {"value": 22.0, "unit": "°C"},
-            "relative_humidity": 45,
-            "address": 101
-        }
 
     Raises:
-        ValidationError (400): If base_id or zone_id are invalid.
+        NotFoundError (404): If base_id or zone_id are not found in config.
         APIError (503): If communication with the Modbus device fails.
     """
-    validate_base_id(base_id)
-    validate_zone_id(zone_id)
-    
     config = get_config()
+    base_label, zone_label = get_zone_labels(base_id, zone_id, config)
+    
     modbus = get_modbus_manager()
     zone_addr = calculate_zone_address(base_id, zone_id)
-    base_label, zone_label = get_zone_labels(base_id, zone_id, config)
 
     try:
-        # Read state first
         state_numeric = modbus.read_register(zone_addr)
         state_str = const.STATE_MAPPING.get(state_numeric, "unknown")
         
-        # Determine if we should update the setpoint in the database
         update_db_for_setpoint = state_str != "off"
         
         setpoint_raw = modbus.read_register(
@@ -130,10 +111,8 @@ def get_zone(base_id: int, zone_id: int):
         
         temperature = dpt_9001.unpack_dpt9001(temperature_raw)
         
-        # Handle setpoint
-        if state_str == "off":
-            setpoint_obj = None # No setpoint when off
-        else:
+        setpoint_obj = None
+        if state_str != "off":
             setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
             setpoint_obj = format_temperature(setpoint, config.api)
         
@@ -141,16 +120,9 @@ def get_zone(base_id: int, zone_id: int):
         logger.error(f"Failed to read zone {base_id}/{zone_id}: {e}")
         raise ModbusException(f"Failed to read zone data: {str(e)}")
     
-    # Prepare response
     response_data = {
-        'base': {
-            'id': base_id,
-            'label': base_label
-        },
-        'zone': {
-            'id': zone_id,
-            'label': zone_label
-        },
+        'base': {'id': base_id, 'label': base_label},
+        'zone': {'id': zone_id, 'label': zone_label},
         'state': state_str,
         'temperature': format_temperature(temperature, config.api),
         'setpoint': setpoint_obj,
@@ -167,12 +139,9 @@ def update_zone(base_id: int, zone_id: int):
     """
     Update the state or setpoint for a specific zone.
 
-    Allows setting a new state (e.g., 'standby') or a new temperature setpoint.
-    At least one of 'state' or 'setpoint' must be provided in the payload.
-
     Args:
-        base_id: The ID of the base station (1-4).
-        zone_id: The ID of the zone (1-12).
+        base_id: The ID of the base station.
+        zone_id: The ID of the zone.
 
     Payload:
         {
@@ -182,22 +151,14 @@ def update_zone(base_id: int, zone_id: int):
 
     Returns:
         A JSON object confirming the updated values.
-        Example:
-        {
-            "base": {"id": 1},
-            "zone": {"id": 1},
-            "updated": {
-                "state": "normal",
-                "setpoint": 22.5
-            }
-        }
 
     Raises:
-        ValidationError (400): If payload is invalid or IDs are out of range.
+        NotFoundError (404): If base_id or zone_id are not found in config.
+        ValidationError (400): If payload is invalid.
         APIError (503): If communication with the Modbus device fails.
     """
-    validate_base_id(base_id)
-    validate_zone_id(zone_id)
+    config = get_config()
+    get_zone_labels(base_id, zone_id, config)
     
     if not request.is_json:
         raise ValidationError("Request must be JSON")
@@ -218,7 +179,6 @@ def update_zone(base_id: int, zone_id: int):
         'updated': {}
     }
     
-    # Update state if provided
     if state_str is not None:
         state_numeric = validate_and_convert_state(state_str)
         try:
@@ -227,9 +187,8 @@ def update_zone(base_id: int, zone_id: int):
         except Exception as e:
             raise ModbusException(f"Failed to update state: {str(e)}")
     
-    # Update setpoint, but only if state is not being set to 'off' in the same request
     if setpoint is not None:
-        if state_str is not None and state_str.lower() == 'off':
+        if state_str and state_str.lower() == 'off':
             logger.warning("Ignoring setpoint update because state is being set to 'off'")
         else:
             if not isinstance(setpoint, (int, float)):
@@ -253,71 +212,63 @@ def list_zones():
     """
     List all configured and active zones.
 
-    Retrieves a list of zones that are defined in the configuration file and
-    are currently active (i.e., not in a fully off state).
-
     Returns:
-        A JSON object containing a list of zone objects and a count.
-        Example:
-        {
-            "zones": [
-                {
-                    "base": {"id": 1, "label": "Main Floor"},
-                    "zone": {"id": 1, "label": "Living Room"},
-                    "state": "normal",
-                    "temperature": {"value": 21.5, "unit": "°C"},
-                    "setpoint": {"value": 22.0, "unit": "°C"}
-                }
-            ],
-            "count": 1
-        }
+        A JSON object containing a list of active zone objects and a count.
 
     Raises:
-        APIError (503): If communication with the Modbus device fails during reads.
+        APIError (503): If communication with the Modbus device fails.
     """
     config = get_config()
-    zones_conf = getattr(config, 'zones', {}) or {}
-    
-    if not zones_conf:
-        return jsonify({
-            'zones': [], 'count': 0, 'message': 'No zones configured. Please add zones to your config file.'
-        }), 200
+    structures = getattr(config, 'structures', [])
+
+    if not structures:
+        return jsonify({'zones': [], 'count': 0, 'message': 'No structures configured.'}), 200
         
     modbus = get_modbus_manager()
     zones = []
     
-    for base_id_str, base_config in zones_conf.items():
-        base_id = int(base_id_str)
-        for zone_id_str, zone_label in base_config.get('zones', {}).items():
-            zone_id = int(zone_id_str)
+    for structure in structures:
+        base_id = structure.get('base_id')
+        base_label = structure.get('base_label', f"Base {base_id}")
+        
+        if not base_id:
+            continue
+            
+        for zone_info in structure.get('zones', []):
+            zone_id = zone_info.get('id')
+            zone_label = zone_info.get('label', f"Zone {zone_id}")
+
+            if not zone_id:
+                continue
+
             try:
                 zone_addr = calculate_zone_address(base_id, zone_id)
                 state_numeric = modbus.read_register(zone_addr)
                 state_str = const.STATE_MAPPING.get(state_numeric, "unknown")
                 
-                # Skip inactive zones by default
                 if state_numeric == 0:
                     continue
                 
                 temperature_raw = modbus.read_register(zone_addr + const.ZONE_TEMP_ADDR_OFFSET)
-                humidity = modbus.read_register(zone_addr + const.ZONE_RH_ADDR_OFFSET)
                 temperature = dpt_9001.unpack_dpt9001(temperature_raw)
+                humidity = modbus.read_register(zone_addr + const.ZONE_RH_ADDR_OFFSET)
                 
                 setpoint_obj = None
                 if state_str != 'off':
                     setpoint_raw = modbus.read_register(
                         zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET,
-                        update_db=False # Don't pollute DB on list view
+                        update_db=False
                     )
                     setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
                     setpoint_obj = format_temperature(setpoint, config.api)
 
                 zones.append({
-                    'base': {'id': base_id, 'label': base_config.get('label')},
+                    'base': {'id': base_id, 'label': base_label},
                     'zone': {'id': zone_id, 'label': zone_label},
                     'state': state_str,
                     'temperature': format_temperature(temperature, config.api),
-                    'setpoint': setpoint_obj
+                    'setpoint': setpoint_obj,
+                    'relative_humidity': humidity
                 })
             except Exception as e:
                 logger.warning(f"Failed to read zone {base_id}/{zone_id} during list operation: {e}")

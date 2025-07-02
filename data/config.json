@@ -29,18 +29,40 @@
     "enable_console": true
   },
   "debug_mode": true,
-  "zones": {
-    "1": {
-      "label": "First Floor",
-      "zones": {
-        "1": "Living Room",
-        "2": "Jungle Bathroom",
-        "3": "Studio",
-        "4": "Bedroom",
-        "5": "Marble Bathroom",
-        "6": "Laundry",
-        "7": "Small Bedroom"
-      }
+  "zones": [
+    {
+      "base_id": 1,
+      "base_label": "First Floor",
+      "zones": [
+        {
+          "id": 1,
+          "label": "Living Room"
+        },
+        {
+          "id": 2,
+          "label": "Jungle Bathroom"
+        },
+        {
+          "id": 3,
+          "label": "Studio"
+        },
+        {
+          "id": 4,
+          "label": "Bedroom"
+        },
+        {
+          "id": 5,
+          "label": "Marble Bathroom"
+        },
+        {
+          "id": 6,
+          "label": "Laundry"
+        },
+        {
+          "id": 7,
+          "label": "Small Bedroom"
+        }
+      ]
     }
-  }
+  ]
 }
