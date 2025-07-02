@@ -3,8 +3,8 @@ import json
 
 # Get the environment variables
 options = {
-    "listen_address": os.getenv("LISTEN_ADDRESS", "0.0.0.0"),
-    "listen_port": int(os.getenv("LISTEN_PORT", 502)),
+    "gateway_address": os.getenv("gateway_address", "0.0.0.0"),
+    "gateway_port": int(os.getenv("gateway_port", 502)),
     "server_type": os.getenv("SERVER_TYPE", "tcp"),
     "slave_id": int(os.getenv("SLAVE_ID", 240))
 }

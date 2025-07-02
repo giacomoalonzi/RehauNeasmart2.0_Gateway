@@ -44,8 +44,8 @@ This project provides a gateway to integrate **Rehau Neasmart 2.0** with **Home 
    docker run -d \
        --name rehauneasmart-gateway \
        -p 502:502 \
-       -e LISTEN_ADDRESS="0.0.0.0" \
-       -e LISTEN_PORT=502 \
+       -e gateway_address="0.0.0.0" \
+       -e gateway_port=502 \
        -e SERVER_TYPE="tcp" \
        -e SLAVE_ID=240 \
        rehauneasmart-gateway
@@ -133,12 +133,12 @@ Below are the available API endpoints for interacting with the gateway.
 
 The container supports the following environment variables for configuration:
 
-| Variable         | Description                          | Default   |
-| ---------------- | ------------------------------------ | --------- |
-| `LISTEN_ADDRESS` | Address to bind the server.          | `0.0.0.0` |
-| `LISTEN_PORT`    | Port to listen for connections.      | `502`     |
-| `SERVER_TYPE`    | Connection type (`tcp` or `serial`). | `tcp`     |
-| `SLAVE_ID`       | Modbus slave ID.                     | `240`     |
+| Variable          | Description                          | Default   |
+| ----------------- | ------------------------------------ | --------- |
+| `gateway_address` | Address to bind the server.          | `0.0.0.0` |
+| `gateway_port`    | Port to listen for connections.      | `502`     |
+| `SERVER_TYPE`     | Connection type (`tcp` or `serial`). | `tcp`     |
+| `SLAVE_ID`        | Modbus slave ID.                     | `240`     |
 
 ---
 

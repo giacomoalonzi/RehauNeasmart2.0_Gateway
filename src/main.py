@@ -426,14 +426,14 @@ if __name__ == "__main__":
 
     with open(const.ADDON_OPT_PATH) as f:
         config = json.load(f)
-        addr = config.get("listen_address", "0.0.0.0")
-        port = config.get("listen_port", "502")
+        addr = config.get("gateway_address", "0.0.0.0")
+        port = config.get("gateway_port", "502")
         server_type = config.get("server_type", "tcp")
         slave_id = config.get("slave_id", 240)
 
     context = setup_server_context(const.DATASTORE_PATH)
 
-    server_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0'}, daemon=True)
+    server_thread = threading.Thread(target=app.run, kwargs={'host': '0.0.0.0', 'port': 5001}, daemon=True)
     server_thread.start()
 
     if server_type == "tcp":
