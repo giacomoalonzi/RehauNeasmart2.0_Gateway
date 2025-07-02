@@ -88,8 +88,6 @@ This checklist provides a structured approach to refactor the application for im
   - [x] Use threading.RLock for all shared resources
   - [x] Implement context manager pattern for all operations
   - [x] Create thread-safe main_v2.py without global state issues
-  - [ ] Remove global variables from legacy main.py (optional)
-  - **Status**: Complete in main_v2.py. Legacy main.py kept for backward compatibility
 
 ### 4. API Error Handling and Fallbacks
 

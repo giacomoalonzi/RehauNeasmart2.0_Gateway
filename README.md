@@ -215,7 +215,7 @@ The gateway supports comprehensive configuration via environment variables:
 | Variable                   | Description                | Default   | Example           |
 | -------------------------- | -------------------------- | --------- | ----------------- |
 | `NEASMART_API_HOST`        | API bind address           | `0.0.0.0` | `0.0.0.0`         |
-| `NEASMART_API_PORT`        | API port                   | `5001`    | `5001`            |
+| `NEASMART_API_PORT`        | API port                   | `5000`    | `5001`            |
 | `NEASMART_API_ENABLE_AUTH` | Enable authentication      | `false`   | `true`            |
 | `NEASMART_API_KEY`         | API key for authentication | -         | `your-secret-key` |
 | `NEASMART_API_JWT_SECRET`  | JWT secret key             | -         | `your-jwt-secret` |
@@ -250,7 +250,7 @@ Alternatively, create a `config.json` file:
 {
   "server": {
     "type": "tcp",
-    "address": "192.168.1.100",
+    "address": "192.168.1.200",
     "port": 502
   },
   "modbus": {
@@ -272,6 +272,20 @@ Alternatively, create a `config.json` file:
     "level": "INFO",
     "enable_file": true,
     "file_path": "./data/gateway.log"
+  },
+  "zones": {
+    "1": {
+      "label": "First Floor",
+      "zones": {
+        "1": "Living Room",
+        "2": "Jungle Bathroom",
+        "3": "Studio",
+        "4": "Bedroom",
+        "5": "Marble Bathroom",
+        "6": "Laundry",
+        "7": "Small Bedroom"
+      }
+    }
   }
 }
 ```
@@ -282,17 +296,7 @@ Alternatively, create a `config.json` file:
 
 ### Base URL
 
-- Development: `http://localhost:5001/api/v1`
-- Production: `https://your-domain.com/api/v1`
-
-### Authentication
-
-When authentication is enabled, include the API key in headers:
-
-```bash
-curl -H "X-API-Key: your-api-key" \
-     -X GET http://localhost:5001/api/v1/zones/1/1
-```
+- URL: `http://localhost:5000/api/v1`
 
 ### Endpoints
 
