@@ -209,10 +209,10 @@ class ModbusManager:
 
             # Create a slave context for each slave
             slave_context_main = ModbusSlaveContext(
-                di=None, co=None, hr=self._data_block_main, ir=None, zero_mode=True
+                di=None, co=None, hr=self._data_block_main, ir=None
             )
             slave_context_secondary = ModbusSlaveContext(
-                di=None, co=None, hr=self._data_block_secondary, ir=None, zero_mode=True
+                di=None, co=None, hr=self._data_block_secondary, ir=None
             )
 
             # Create server context with multiple slaves

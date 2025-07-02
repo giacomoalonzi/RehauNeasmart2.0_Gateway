@@ -37,7 +37,6 @@ import const
 import dpt_9001
 
 # Import original Modbus server components
-from pymodbus.framer import ModbusRtuFramer, ModbusSocketFramer
 from pymodbus.server import StartAsyncSerialServer, StartAsyncTcpServer
 from pymodbus import __version__ as pymodbus_version
 
@@ -171,13 +170,12 @@ async def run_modbus_server(config):
             server_task = asyncio.create_task(
                 StartAsyncTcpServer(
                     context=context,
-            identity=identity,
-            address=server_addr,
-            framer=ModbusSocketFramer,
-            allow_reuse_address=True,
-            ignore_missing_slaves=True,
-            broadcast_enable=True,
-        )
+                    identity=identity,
+                    address=server_addr,
+                    framer="socket",
+                    ignore_missing_slaves=True,
+                    broadcast_enable=True,
+                )
             )
             
         elif config.server.type.value == "serial":
@@ -188,16 +186,16 @@ async def run_modbus_server(config):
             server_task = asyncio.create_task(
                 StartAsyncSerialServer(
                     context=context,
-            identity=identity,
-            port=server_addr,
-            framer=ModbusRtuFramer,
+                    identity=identity,
+                    port=server_addr,
+                    framer="rtu",
                     stopbits=config.server.serial_stopbits,
                     bytesize=config.server.serial_bytesize,
                     parity=config.server.serial_parity,
                     baudrate=config.server.serial_baudrate,
-            ignore_missing_slaves=True,
-            broadcast_enable=True,
-        )
+                    ignore_missing_slaves=True,
+                    broadcast_enable=True,
+                )
             )
         else:
             raise ValueError(f"Unsupported server type: {config.server.type}")
