@@ -100,13 +100,8 @@ def get_zone(base_id: int, zone_id: int):
         state_numeric = modbus.read_register(zone_addr)
         state_str = const.STATE_MAPPING.get(state_numeric, "unknown")
         
-        update_db_for_setpoint = state_str != "off"
-        
-        setpoint_raw = modbus.read_register(
-            zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET,
-            update_db=update_db_for_setpoint
-        )
         temperature_raw = modbus.read_register(zone_addr + const.ZONE_TEMP_ADDR_OFFSET)
+        setpoint_raw = modbus.read_register(zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET)
         humidity = modbus.read_register(zone_addr + const.ZONE_RH_ADDR_OFFSET)
         
         temperature = dpt_9001.unpack_dpt9001(temperature_raw)
@@ -114,14 +109,9 @@ def get_zone(base_id: int, zone_id: int):
         setpoint_obj = None
         if state_str != "off":
             setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
-            if setpoint is not None and 5.0 <= setpoint <= 40.0:
+            if setpoint is not None:
                 setpoint_obj = format_temperature(setpoint, config.api)
-            else:
-                logger.warning(
-                    f"Invalid setpoint value read for zone {base_id}/{zone_id}: {setpoint}."
-                    " Setting to null."
-                )
-        
+
     except Exception as e:
         logger.error(f"Failed to read zone {base_id}/{zone_id}: {e}")
         raise ModbusException(f"Failed to read zone data: {str(e)}")
@@ -130,7 +120,7 @@ def get_zone(base_id: int, zone_id: int):
         'base': {'id': base_id, 'label': base_label},
         'zone': {'id': zone_id, 'label': zone_label},
         'state': state_str,
-        'temperature': format_temperature(temperature, config.api),
+        'temperature': format_temperature(temperature, config.api) if temperature is not None else None,
         'setpoint': setpoint_obj,
         'relative_humidity': humidity,
         'address': zone_addr
@@ -251,39 +241,38 @@ def list_zones():
                 zone_addr = calculate_zone_address(base_id, zone_id)
                 state_numeric = modbus.read_register(zone_addr)
                 state_str = const.STATE_MAPPING.get(state_numeric, "unknown")
-                
-                if state_numeric == 0:
-                    continue
-                
+
                 temperature_raw = modbus.read_register(zone_addr + const.ZONE_TEMP_ADDR_OFFSET)
-                temperature = dpt_9001.unpack_dpt9001(temperature_raw)
+                setpoint_raw = modbus.read_register(zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET)
                 humidity = modbus.read_register(zone_addr + const.ZONE_RH_ADDR_OFFSET)
                 
+                temperature = dpt_9001.unpack_dpt9001(temperature_raw)
+                
                 setpoint_obj = None
-                if state_str != 'off':
-                    setpoint_raw = modbus.read_register(
-                        zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET,
-                        update_db=False
-                    )
+                if state_str != "off":
                     setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
-                    if setpoint is not None and 5.0 <= setpoint <= 40.0:
+                    if setpoint is not None:
                         setpoint_obj = format_temperature(setpoint, config.api)
-                    else:
-                        logger.warning(
-                            f"Invalid setpoint value read for zone {base_id}/{zone_id}: {setpoint}."
-                            " Setting to null."
-                        )
-
-                zones.append({
+                
+                zone_data = {
                     'base': {'id': base_id, 'label': base_label},
                     'zone': {'id': zone_id, 'label': zone_label},
                     'state': state_str,
-                    'temperature': format_temperature(temperature, config.api),
+                    'temperature': format_temperature(temperature, config.api) if temperature is not None else None,
                     'setpoint': setpoint_obj,
-                    'relative_humidity': humidity
-                })
+                    'relative_humidity': humidity,
+                    'address': zone_addr
+                }
+                zones.append(zone_data)
+
             except Exception as e:
-                logger.warning(f"Failed to read zone {base_id}/{zone_id} during list operation: {e}")
+                logger.error(f"Failed to process zone {base_id}/{zone_id}: {e}")
+                # Optionally add placeholder data for the errored zone
+                zones.append({
+                    'base': {'id': base_id, 'label': base_label},
+                    'zone': {'id': zone_id, 'label': zone_label},
+                    'error': f"Failed to retrieve data: {str(e)}"
+                })
 
     return jsonify({'zones': zones, 'count': len(zones)}), 200
 

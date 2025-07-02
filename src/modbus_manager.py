@@ -22,6 +22,7 @@ from pymodbus.device import ModbusDeviceIdentification
 
 from database import DatabaseManager, get_database_manager
 import const
+import dpt_9001
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,82 @@ class ModbusManager:
             }
         )
     
+    def _is_zone_register(self, address: int) -> bool:
+        """Check if an address belongs to a zone register."""
+        if not (100 <= address < 4900):
+            return False
+
+        offset = address % const.ZONE_ID_MULTIPLIER
+        if offset == 0:
+            base_addr = address
+        elif offset in [const.ZONE_SETPOINT_ADDR_OFFSET, const.ZONE_TEMP_ADDR_OFFSET, const.ZONE_RH_ADDR_OFFSET]:
+            base_addr = address - offset
+        else:
+            return False
+
+        zone_id_part = (base_addr % const.ZONE_BASE_ID_MULTIPLIER) // const.ZONE_ID_MULTIPLIER
+        base_id_part = base_addr // const.ZONE_BASE_ID_MULTIPLIER
+
+        if (1 <= zone_id_part <= 12) and (0 <= base_id_part < 4):
+            return True
+        
+        return False
+
+    def _validate_and_filter_read_data(self, address: int, values: List[int]) -> List[int]:
+        """Validate data read from Modbus and fall back to DB if invalid."""
+        if not values or len(values) > 1:
+            return values
+            
+        original_value = values[0]
+
+        is_invalid = False
+        log_reason = ""
+
+        if address in [const.GLOBAL_OP_STATE_ADDR, const.GLOBAL_OP_MODE_ADDR]:
+            if original_value == 0:
+                is_invalid = True
+                log_reason = "global state/mode is zero"
+        
+        elif self._is_zone_register(address):
+            offset = address % const.ZONE_ID_MULTIPLIER
+            if offset == 0:  # Zone state
+                if original_value == 0:
+                    is_invalid = True
+                    log_reason = "zone state is zero"
+            elif offset == const.ZONE_SETPOINT_ADDR_OFFSET:  # Zone setpoint
+                unpacked = dpt_9001.unpack_dpt9001(original_value)
+                if unpacked is None or not (5.0 <= unpacked <= 40.0):
+                    is_invalid = True
+                    log_reason = f"zone setpoint out of range (unpacked: {unpacked})"
+            elif offset == const.ZONE_TEMP_ADDR_OFFSET:  # Zone temperature
+                unpacked = dpt_9001.unpack_dpt9001(original_value)
+                if unpacked is None or unpacked == 0.0: # Treat 0.0 as a likely invalid startup value
+                    is_invalid = True
+                    log_reason = f"zone temperature is invalid or zero (unpacked: {unpacked})"
+            elif offset == const.ZONE_RH_ADDR_OFFSET:  # Zone humidity
+                if original_value == 0:
+                    is_invalid = True
+                    log_reason = "zone humidity is zero"
+
+        if not is_invalid:
+            return values
+
+        logger.warning(f"Invalid value read for {address} (raw: {original_value}), reason: {log_reason}. Attempting to use cache.")
+        try:
+            if cached_values := self.db_manager.get_registers(address, 1):
+                cached_value = cached_values[0]
+                if cached_value != original_value:
+                    logger.warning(f"Using cached value {cached_value} for register {address}.")
+                    return [cached_value]
+                else:
+                    logger.warning(f"Cached value for {address} is the same as the invalid one, using original.")
+            else:
+                logger.warning(f"No cached value found for register {address}.")
+        except Exception as e:
+            logger.error(f"Error retrieving cached value for {address}: {e}")
+            
+        return values
+    
     def read_registers(self, address: int, count: int = 1, update_db: bool = True) -> List[int]:
         """Read holding registers with circuit breaker protection"""
         def _read():
@@ -267,9 +344,12 @@ class ModbusManager:
         
         try:
             values = self.circuit_breaker.call(_read)
+
+            validated_values = self._validate_and_filter_read_data(address, values)
+
             if update_db:
-                self.db_manager.set_registers(address, values)
-            return values
+                self.db_manager.set_registers(address, validated_values)
+            return validated_values
         except CircuitBreakerOpen:
             # Return cached values from database when circuit is open
             logger.warning(f"Circuit breaker open, returning cached values for address {address}")
