@@ -1,0 +1,25 @@
+{
+  "// SERVER & MODBUS CONFIGURATION": "",
+  "// Hardware connection and protocol settings": "",
+
+  "server": {
+    "type": "tcp",
+    "address": "192.168.1.100",
+    "port": 502,
+    "// Serial connection options": "",
+    "serial_port": "/dev/ttyUSB0",
+    "serial_baudrate": 38400,
+    "serial_bytesize": 8,
+    "serial_parity": "N",
+    "serial_stopbits": 1
+  },
+
+  "modbus": {
+    "slave_id": 240,
+    "sync_on_startup": false,
+    "sync_batch_size": 100,
+    "circuit_breaker_failure_threshold": 5,
+    "circuit_breaker_recovery_timeout": 60,
+    "circuit_breaker_half_open_calls": 3
+  }
+}

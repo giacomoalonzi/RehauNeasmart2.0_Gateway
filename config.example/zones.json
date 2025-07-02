@@ -1,0 +1,21 @@
+{
+  "// ZONES CONFIGURATION": "",
+  "// Building structure and zone definitions": "",
+  "// This file defines your physical building layout": "",
+
+  "structures": [
+    {
+      "base_id": 1,
+      "base_label": "First Floor",
+      "zones": [
+        { "id": 1, "label": "Living Room" },
+        { "id": 2, "label": "Jungle Bathroom" },
+        { "id": 3, "label": "Studio" },
+        { "id": 4, "label": "Bedroom" },
+        { "id": 5, "label": "Marble Bathroom" },
+        { "id": 6, "label": "Laundry" },
+        { "id": 7, "label": "Small Bedroom" }
+      ]
+    }
+  ]
+}

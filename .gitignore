@@ -3,6 +3,10 @@
 *.log
 venv/
 
+# Configuration
+config/
+!config.example/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -73,3 +77,5 @@ venv.bak/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+old_main.py

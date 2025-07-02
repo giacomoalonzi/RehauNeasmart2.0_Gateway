@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  neasmart-gateway:
+    build: .
+    container_name: rehau-neasmart-gateway
+    restart: unless-stopped
+
+    ports:
+      - '5001:5000' # API port
+      - '502:502' # Modbus TCP port (if acting as server)
+
+    volumes:
+      - ./config:/app/config:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    environment:
+      # Copy settings from env.example
+      - NEASMART_GATEWAY_SERVER_TYPE=${NEASMART_GATEWAY_SERVER_TYPE:-tcp}
+      - NEASMART_GATEWAY_SERVER_ADDRESS=${NEASMART_GATEWAY_SERVER_ADDRESS:-192.168.1.100}
+      - NEASMART_GATEWAY_SERVER_PORT=${NEASMART_GATEWAY_SERVER_PORT:-502}
+      - NEASMART_MODBUS_SLAVE_ID=${NEASMART_MODBUS_SLAVE_ID:-240}
+      - NEASMART_API_PORT=${NEASMART_API_PORT:-5000}
+      - NEASMART_API_ENABLE_AUTH=${NEASMART_API_ENABLE_AUTH:-false}
+      - NEASMART_LOG_LEVEL=${NEASMART_LOG_LEVEL:-INFO}
+      - NEASMART_DATABASE_PATH=/app/data/registers.db
+      - NEASMART_LOG_FILE=/app/logs/gateway.log
+
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:5001/api/v1/health']
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+    # For serial connection, add device mapping
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+
+    networks:
+      - neasmart
+
+networks:
+  neasmart:
+    driver: bridge
+
+volumes:
+  neasmart-data:
+  neasmart-logs:

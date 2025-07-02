@@ -62,6 +62,10 @@ def unpack_dpt9001(value):
     if not isinstance(value, int):
         raise TypeError("Value must be an integer.")
 
+    # Per KNX DPT 9.001 specification, 0x7FFF is an invalid value.
+    if value == 0x7FFF:
+        return None
+
     # Extract the high and low bytes
     h = (value >> 8) & 0xFF
     l = value & 0xFF

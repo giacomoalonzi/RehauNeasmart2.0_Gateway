@@ -4,88 +4,77 @@ on:
   push:
     branches:
       - main
+      - 'feature/api-refactoring'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  extract-version:
-    name: Extract Version from Git Tag
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.vars.outputs.version }}
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Extract Version from Git Tag
-        id: vars
-        run: |
-          VERSION=$(git describe --tags --abbrev=0 || echo "latest")
-          echo "version=${VERSION}" >> $GITHUB_ENV
-          echo "::set-output name=version::${VERSION}"
-
-      - name: Debug Extracted Version
-        run: echo "Extracted version ${{ steps.vars.outputs.version }}"
-
   test:
     name: Run Unit Tests
-    needs: extract-version
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.11'
 
       - name: Install Dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
-          pip install -r src/requirements.txt
+          pip install --no-cache-dir -r requirements.txt
 
       - name: Run Unit Tests
+        env:
+          CONFIG_PATH: ${{ secrets.CONFIG_PATH_TEST }}
         run: |
           source venv/bin/activate
-          python -m unittest discover src
+          pytest
 
   build:
     name: Build and Push Docker Image
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
-      - name: Validate Docker Tag
-        run: |
-          if [ -z "${{ needs.extract-version.outputs.version }}" ]; then
-            echo "Version is not set, using fallback tag 'latest'."
-            echo "fallback_version=latest" >> $GITHUB_ENV
-          else
-            echo "fallback_version=${{ needs.extract-version.outputs.version }}" >> $GITHUB_ENV
-          fi
       - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Test Docker Login
-        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: giacomoalonzi/rehauneasmart_2_0_gateway
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: true
           platforms: linux/arm64,linux/amd64
-          tags: giacomoalonzi/rehauneasmart_2_0_gateway:latest
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Post build cleanup
         run: docker system prune -f
