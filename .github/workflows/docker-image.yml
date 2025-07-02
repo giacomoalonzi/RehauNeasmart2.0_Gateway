@@ -5,6 +5,8 @@ on:
     branches:
       - main
       - 'feature/api-refactoring'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - main
