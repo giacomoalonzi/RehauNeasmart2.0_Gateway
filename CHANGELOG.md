@@ -7,7 +7,7 @@
 - Configuration system supporting file and environment variables, validation, type safety, and hot-reload.
 - Structured logging infrastructure with JSON support, multiple handlers, rotation, and request/response tracking.
 - Production-ready server setup using Gunicorn with gevent workers, health checks, and non-root user support.
-- Main application entry point `main_v2.py` integrating Flask app, CORS, rate limiting, blueprints, and graceful shutdown.
+- Main application entry point `main.py` integrating Flask app, CORS, rate limiting, blueprints, and graceful shutdown.
 - API blueprint for zone management and other endpoints with proper error handling and input validation.
 - Swagger documentation, request logging middleware, and API key authentication support.
 - Dockerfile enhancements including multi-stage build, dependencies installation, health checks, and production command.

@@ -109,9 +109,9 @@ All configuration options can be overridden using environment variables:
 
 ```bash
 # Examples
-export NEASMART_SERVER_TYPE=tcp
-export NEASMART_SERVER_ADDRESS=192.168.1.100
-export NEASMART_SERVER_PORT=502
+export NEASMART_GATEWAY_SERVER_TYPE=tcp
+export NEASMART_GATEWAY_SERVER_ADDRESS=192.168.1.100
+export NEASMART_GATEWAY_SERVER_PORT=502
 export NEASMART_MODBUS_SLAVE_ID=240
 export NEASMART_API_PORT=5001
 export NEASMART_API_ENABLE_AUTH=true

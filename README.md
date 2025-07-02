@@ -5,6 +5,8 @@
 [![Docker](https://img.shields.io/badge/docker-supported-blue)](https://www.docker.com/)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-pytest-green)](https://pytest.org/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-black)](https://github.com/psf/black)
 
 ## 🚀 Features
 
@@ -84,6 +86,24 @@ The gateway has been completely refactored for production readiness. The new arc
 - **Observability**: Structured logging and health endpoints
 - **Security**: API authentication and rate limiting
 - **Maintainability**: Modular architecture with clear separation of concerns
+
+---
+
+## 🔌 Modbus Configuration
+
+The gateway communicates with the Rehau Neasmart 2.0 system using specific Modbus parameters:
+
+### Gateway KNX - Modbus Slave Configuration
+
+| Parameter          | Value             | Notes                                         |
+| ------------------ | ----------------- | --------------------------------------------- |
+| **Slave Address**  | 240 or 241        | Primary/Secondary addresses for communication |
+| **Baud Rate**      | 38400 Bits/s      | Fixed communication speed                     |
+| **Parity**         | None (1 stop bit) | No parity checking                            |
+| **Byte Order**     | MSB First         | Most Significant Byte sent first              |
+| **Register Start** | 0                 | First address is "0"                          |
+
+All KNX gateways in the NEA SMART 2.0 system must be configured as Modbus Slaves with these exact parameters.
 
 ---
 
@@ -175,8 +195,8 @@ This script will:
    **Option B: Using environment variables**
 
    ```bash
-   export NEASMART_SERVER_TYPE=tcp
-   export NEASMART_SERVER_ADDRESS=192.168.1.100
+   export NEASMART_GATEWAY_SERVER_TYPE=tcp
+   export NEASMART_GATEWAY_SERVER_ADDRESS=192.168.1.100
    export NEASMART_MODBUS_SLAVE_ID=240
    ```
 
@@ -185,12 +205,12 @@ This script will:
    ```bash
    cd src
    # Development mode (with debug enabled)
-   python main_v2.py
+   python main.py
 
    # Production mode with Gunicorn (Python < 3.13)
    # Note: Gunicorn is currently disabled for Python 3.13 compatibility
    # Uncomment gunicorn in requirements.txt first if using Python < 3.13
-   gunicorn --config gunicorn_config.py main_v2:app
+   gunicorn --config gunicorn_config.py main:app
    ```
 
 ---
@@ -203,12 +223,12 @@ The gateway supports comprehensive configuration via environment variables:
 
 #### Core Configuration
 
-| Variable                   | Description           | Default   | Example         |
-| -------------------------- | --------------------- | --------- | --------------- |
-| `NEASMART_SERVER_TYPE`     | Connection type       | `tcp`     | `tcp`, `serial` |
-| `NEASMART_SERVER_ADDRESS`  | Modbus server address | `0.0.0.0` | `192.168.1.100` |
-| `NEASMART_SERVER_PORT`     | Modbus server port    | `502`     | `502`           |
-| `NEASMART_MODBUS_SLAVE_ID` | Modbus slave ID       | `240`     | `240`, `241`    |
+| Variable                          | Description           | Default   | Example         |
+| --------------------------------- | --------------------- | --------- | --------------- |
+| `NEASMART_GATEWAY_SERVER_TYPE`    | Connection type       | `tcp`     | `tcp`, `serial` |
+| `NEASMART_GATEWAY_SERVER_ADDRESS` | Modbus server address | `0.0.0.0` | `192.168.1.100` |
+| `NEASMART_GATEWAY_SERVER_PORT`    | Modbus server port    | `502`     | `502`           |
+| `NEASMART_MODBUS_SLAVE_ID`        | Modbus slave ID       | `240`     | `240`, `241`    |
 
 #### API Configuration
 
@@ -492,6 +512,57 @@ When the circuit breaker is open, the gateway returns cached values from the dat
 
 ---
 
+## 🧪 Testing
+
+The gateway includes a comprehensive test suite:
+
+### Running Tests
+
+```bash
+# Install development dependencies
+pip install -r requirements.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=src --cov-report=html
+
+# Run specific test file
+pytest tests/unit/test_database.py -v
+
+# Run with specific markers
+pytest -m "not integration"
+```
+
+### Test Structure
+
+```
+tests/
+├── unit/                  # Unit tests for individual modules
+│   ├── test_database.py   # Database manager tests
+│   ├── test_dpt_9001.py   # DPT 9001 encoding tests
+│   └── test_config.py     # Configuration tests
+└── integration/           # Integration tests
+    ├── test_api.py        # API endpoint tests
+    └── test_modbus.py     # Modbus communication tests
+```
+
+### Code Quality
+
+```bash
+# Format code with Black
+black src/ tests/
+
+# Check code style
+flake8 src/ tests/
+
+# Type checking
+mypy src/
+```
+
+---
+
 ## 📊 Monitoring & Observability
 
 ### Health Checks
@@ -541,8 +612,8 @@ services:
       - '502:502' # Modbus
       - '5001:5001' # API
     environment:
-      - NEASMART_SERVER_TYPE=tcp
-      - NEASMART_SERVER_ADDRESS=192.168.1.100
+      - NEASMART_GATEWAY_SERVER_TYPE=tcp
+      - NEASMART_GATEWAY_SERVER_ADDRESS=192.168.1.100
       - NEASMART_MODBUS_SLAVE_ID=240
       - NEASMART_API_ENABLE_AUTH=true
       - NEASMART_API_KEY=your-secret-key
@@ -586,7 +657,7 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:5001/health || exit 1
 
 # Production server
-CMD ["gunicorn", "--config", "gunicorn_config.py", "main_v2:app"]
+CMD ["gunicorn", "--config", "gunicorn_config.py", "main:app"]
 ```
 
 ---
@@ -637,7 +708,7 @@ src/
 ├── modbus_manager.py      # Modbus management
 ├── logger_setup.py        # Logging configuration
 ├── gunicorn_config.py     # Production server config
-├── main_v2.py             # Main application (new)
+├── main.py             # Main application (new)
 ├── main.py                # Legacy application
 └── requirements.txt       # Dependencies
 
@@ -704,8 +775,8 @@ docker-compose -f docker-compose-v2.yml up -d
 
    ```bash
    # Convert old environment variables
-   # OLD: gateway_address -> NEW: NEASMART_SERVER_ADDRESS
-   # OLD: SERVER_TYPE -> NEW: NEASMART_SERVER_TYPE
+   # OLD: gateway_address -> NEW: NEASMART_GATEWAY_SERVER_ADDRESS
+   # OLD: SERVER_TYPE -> NEW: NEASMART_GATEWAY_SERVER_TYPE
    ```
 
 3. **Test compatibility**:
@@ -737,14 +808,14 @@ Gunicorn and gevent are currently incompatible with Python 3.13. For development
 
 ```bash
 # Use the built-in Flask server
-python src/main_v2.py
+python src/main.py
 ```
 
 For production with Python 3.13, consider using alternative WSGI servers like waitress:
 
 ```bash
 pip install waitress
-waitress-serve --port=5001 --call 'main_v2:create_app'
+waitress-serve --port=5001 --call 'main:create_app'
 ```
 
 ### Port Conflicts
