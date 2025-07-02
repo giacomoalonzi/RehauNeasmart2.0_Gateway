@@ -78,6 +78,12 @@ class InMemoryFallback:
         with self._lock:
             return dict(self._data)
     
+    def clear(self) -> None:
+        """Clears all data from the fallback storage."""
+        with self._lock:
+            self._data.clear()
+            self._dirty = True
+    
     def clear_dirty_flag(self) -> None:
         self._dirty = False
 
@@ -304,31 +310,39 @@ class DatabaseManager:
                 self._fallback.set_range(start_address, values)
     
     def close(self) -> None:
-        """Close database connection gracefully"""
+        """Close database connection"""
         with self._lock:
-            try:
-                # Sync any pending fallback data
-                if self._connection_healthy:
-                    self._sync_fallback_to_database()
-                
-                if self._db:
+            if self._db:
+                try:
                     self._db.close()
+                except Exception as e:
+                    logger.error(f"Error closing database: {e}")
+                finally:
                     self._db = None
-                    
-            except Exception as e:
-                logger.error(f"Error closing database: {e}")
-            finally:
-                self._connection_healthy = False
+                    self._connection_healthy = False
     
+    def is_using_fallback(self) -> bool:
+        """Check if currently using fallback"""
+        return not self._connection_healthy and self.enable_fallback
+
     def get_status(self) -> Dict[str, Any]:
-        """Get current database status for monitoring"""
-        return {
-            "healthy": self._connection_healthy,
-            "using_fallback": self._fallback is not None and self._fallback.is_dirty(),
-            "fallback_entries": len(self._fallback.get_all_data()) if self._fallback else 0,
-            "db_path": self.db_path,
-            "last_health_check": self._last_health_check
-        }
+        """Get database status"""
+        with self._lock:
+            db_entries = 0
+            if self._connection_healthy and self._db:
+                try:
+                    db_entries = len(list(self._db.keys()))
+                except Exception as e:
+                    logger.error(f"Could not get db entry count: {e}")
+            
+            return {
+                "db_path": self.db_path,
+                "healthy": self._connection_healthy,
+                "using_fallback": self.is_using_fallback(),
+                "last_health_check": self._last_health_check,
+                "fallback_entries": len(self._fallback.get_all_data()) if self._fallback else 0,
+                "db_entries": db_entries
+            }
     
     def __enter__(self):
         return self
