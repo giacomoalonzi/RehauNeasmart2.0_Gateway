@@ -397,13 +397,13 @@ async def run_modbus_server(config):
             server_task = asyncio.create_task(
                 StartAsyncTcpServer(
                     context=context,
-                    identity=identity,
-                    address=server_addr,
-                    framer=ModbusSocketFramer,
-                    allow_reuse_address=True,
-                    ignore_missing_slaves=True,
-                    broadcast_enable=True,
-                )
+            identity=identity,
+            address=server_addr,
+            framer=ModbusSocketFramer,
+            allow_reuse_address=True,
+            ignore_missing_slaves=True,
+            broadcast_enable=True,
+        )
             )
             
         elif config.server.type.value == "serial":
@@ -414,16 +414,16 @@ async def run_modbus_server(config):
             server_task = asyncio.create_task(
                 StartAsyncSerialServer(
                     context=context,
-                    identity=identity,
-                    port=server_addr,
-                    framer=ModbusRtuFramer,
+            identity=identity,
+            port=server_addr,
+            framer=ModbusRtuFramer,
                     stopbits=config.server.serial_stopbits,
                     bytesize=config.server.serial_bytesize,
                     parity=config.server.serial_parity,
                     baudrate=config.server.serial_baudrate,
-                    ignore_missing_slaves=True,
-                    broadcast_enable=True,
-                )
+            ignore_missing_slaves=True,
+            broadcast_enable=True,
+        )
             )
         else:
             raise ValueError(f"Unsupported server type: {config.server.type}")

@@ -1,34 +1,22 @@
-$schema: 'https://spec.openapis.org/oas/3.1/schema/2021-09-10'
-openapi: '3.1.0'
+openapi: '3.0.0'
 info:
   title: 'Rehau Neasmart 2.0 Gateway API'
-  version: '2.0.0'
+  version: '2.1.0'
+  description: API for controlling a Rehau Neasmart 2.0 system via a Modbus gateway.
 servers:
   - url: '/api/v1'
 paths:
   /zones:
     get:
-      summary: 'List all zones'
-      parameters:
-        - name: base_id
-          in: query
-          schema:
-            type: integer
-          description: 'Filter by base ID'
-        - name: include_inactive
-          in: query
-          schema:
-            type: boolean
-          description: 'Include inactive zones'
+      summary: 'List all configured zones'
+      description: Retrieves a list of all zones defined in the gateway configuration, along with their current state.
       responses:
         '200':
-          description: 'A list of zones'
+          description: 'A list of configured zones and their status.'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ZonesListResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
         '500':
           $ref: '#/components/responses/InternalError'
   /zones/{base_id}/{zone_id}:
@@ -51,7 +39,7 @@ paths:
             maximum: 12
       responses:
         '200':
-          description: 'Zone information'
+          description: 'Detailed information for the specified zone.'
           content:
             application/json:
               schema:
@@ -64,6 +52,18 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
     post:
       summary: 'Update zone parameters'
+      description: Update the state and/or setpoint for a specific zone.
+      parameters:
+        - name: base_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: integer
       requestBody:
         required: true
         content:
@@ -72,7 +72,7 @@ paths:
               $ref: '#/components/schemas/ZoneUpdateRequest'
       responses:
         '200':
-          description: 'Zone updated'
+          description: 'Confirmation of the zone update.'
           content:
             application/json:
               schema:
@@ -85,37 +85,57 @@ paths:
           $ref: '#/components/responses/ServiceUnavailable'
 components:
   schemas:
+    BaseInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        label:
+          type: string
+          example: 'First Floor'
+    ZoneInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        label:
+          type: string
+          example: 'Living Room'
+    Temperature:
+      type: object
+      properties:
+        value:
+          type: number
+          format: float
+          example: 21.5
+        unit:
+          type: string
+          enum: [C, F]
+          example: 'C'
     Zone:
       type: object
       properties:
-        base_id:
-          type: integer
-        base_label:
-          type: string
-          nullable: true
-        zone_id:
-          type: integer
-        zone_label:
-          type: string
-          nullable: true
+        base:
+          $ref: '#/components/schemas/BaseInfo'
+        zone:
+          $ref: '#/components/schemas/ZoneInfo'
         state:
-          type: integer
-        setpoint:
-          type: number
+          type: string
+          enum: ['presence', 'away', 'off', 'scheduled', 'holiday']
+          example: 'presence'
         temperature:
-          type: number
+          $ref: '#/components/schemas/Temperature'
+        setpoint:
+          $ref: '#/components/schemas/Temperature'
+          nullable: true
         relative_humidity:
           type: integer
+          example: 45
         address:
           type: integer
-      required:
-        - base_id
-        - zone_id
-        - state
-        - setpoint
-        - temperature
-        - relative_humidity
-        - address
+          example: 1300
     ZonesListResponse:
       type: object
       properties:
@@ -125,45 +145,38 @@ components:
             $ref: '#/components/schemas/Zone'
         count:
           type: integer
-        filter:
-          type: object
-          properties:
-            base_id:
-              type: integer
-              nullable: true
-            include_inactive:
-              type: boolean
-      required:
-        - zones
-        - count
-        - filter
+          example: 8
     ZoneUpdateRequest:
       type: object
       properties:
         state:
-          type: integer
+          type: string
+          enum: ['presence', 'away', 'off', 'scheduled', 'holiday']
+          description: 'Descriptive state for the zone.'
+          example: 'away'
         setpoint:
           type: number
-      additionalProperties: false
+          format: float
+          description: "New temperature setpoint. Ignored if state is set to 'off'."
+          example: 22.5
+      minProperties: 1
     ZoneUpdateResponse:
       type: object
       properties:
-        base_id:
-          type: integer
-        zone_id:
-          type: integer
+        base:
+          $ref: '#/components/schemas/BaseInfo'
+        zone:
+          $ref: '#/components/schemas/ZoneInfo'
         updated:
           type: object
           properties:
             state:
-              type: integer
+              type: string
             setpoint:
               type: number
-            setpoint_encoded:
-              type: integer
       required:
-        - base_id
-        - zone_id
+        - base
+        - zone
         - updated
     Error:
       type: object
@@ -172,12 +185,15 @@ components:
           type: string
         status:
           type: integer
+        details:
+          type: object
+          nullable: true
       required:
         - error
         - status
   responses:
     BadRequest:
-      description: 'Bad request (validation error)'
+      description: 'Bad request (e.g., validation error)'
       content:
         application/json:
           schema:
@@ -189,7 +205,7 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
     ServiceUnavailable:
-      description: 'Modbus communication error'
+      description: 'Service unavailable (e.g., Modbus communication error)'
       content:
         application/json:
           schema:

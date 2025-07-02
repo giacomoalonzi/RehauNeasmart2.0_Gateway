@@ -39,3 +39,13 @@ REGS_STARTING_ADDR = 0
 DATASTORE_PATH = "./data/registers.db"
 ADDON_OPT_PATH = "./data/options.json"
 
+# State mapping for API
+STATE_MAPPING = {
+    1: "presence",
+    2: "away",
+    3: "off",
+    4: "scheduled",
+    5: "holiday" 
+}
+STATE_MAPPING_REVERSE = {v: k for k, v in STATE_MAPPING.items()}
+

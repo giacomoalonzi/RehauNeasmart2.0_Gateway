@@ -187,6 +187,7 @@ class ModbusManager:
         self.circuit_breaker = CircuitBreaker(
             circuit_breaker_config or CircuitBreakerConfig()
         )
+        self.last_known_setpoints = {} # Cache for last good setpoints
         
         self._lock = threading.RLock()
         self._context = None
@@ -242,7 +243,7 @@ class ModbusManager:
             }
         )
     
-    def read_registers(self, address: int, count: int = 1) -> List[int]:
+    def read_registers(self, address: int, count: int = 1, update_db: bool = True) -> List[int]:
         """Read holding registers with circuit breaker protection"""
         def _read():
             with self._lock:
@@ -261,7 +262,10 @@ class ModbusManager:
                     raise ModbusReadError(f"Read failed at address {address}: {e}")
         
         try:
-            return self.circuit_breaker.call(_read)
+            values = self.circuit_breaker.call(_read)
+            if update_db:
+                self.db_manager.set_registers(address, values)
+            return values
         except CircuitBreakerOpen:
             # Return cached values from database when circuit is open
             logger.warning(f"Circuit breaker open, returning cached values for address {address}")
@@ -281,6 +285,8 @@ class ModbusManager:
                         address,
                         values
                     )
+                    # Also update database on successful write
+                    self.db_manager.set_registers(address, values)
                 except Exception as e:
                     logger.error(f"Failed to write registers at {address}: {e}")
                     raise ModbusWriteError(f"Write failed at address {address}: {e}")
@@ -293,9 +299,9 @@ class ModbusManager:
             self.db_manager.set_registers(address, values)
             raise
     
-    def read_register(self, address: int) -> int:
+    def read_register(self, address: int, update_db: bool = True) -> int:
         """Read single holding register"""
-        return self.read_registers(address, 1)[0]
+        return self.read_registers(address, 1, update_db=update_db)[0]
     
     def write_register(self, address: int, value: int) -> None:
         """Write single holding register"""

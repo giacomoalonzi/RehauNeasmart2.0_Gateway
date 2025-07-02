@@ -76,6 +76,7 @@ class APIConfig:
     cors_origins: list = field(default_factory=lambda: ["*"])
     request_timeout: int = 30
     max_request_size: int = 1048576  # 1MB
+    temperature_unit: str = "C"  # "C" for Celsius, "F" for Fahrenheit
 
 
 @dataclass
@@ -198,15 +199,16 @@ class ConfigLoader:
             "DATABASE_ENABLE_FALLBACK": "database.enable_fallback",
             "MODBUS_SLAVE_ID": "modbus.slave_id",
             "MODBUS_SYNC_ON_STARTUP": "modbus.sync_on_startup",
-            "SERVER_TYPE": "server.type",
-            "SERVER_ADDRESS": "server.address",
-            "SERVER_PORT": "server.port",
-            "SERVER_SERIAL_PORT": "server.serial_port",
+            "GATEWAY_SERVER_TYPE": "server.type",
+            "GATEWAY_SERVER_ADDRESS": "server.address",
+            "GATEWAY_SERVER_PORT": "server.port",
+            "GATEWAY_SERVER_SERIAL_PORT": "server.serial_port",
             "API_HOST": "api.host",
             "API_PORT": "api.port",
             "API_ENABLE_AUTH": "api.enable_auth",
             "API_KEY": "api.api_key",
             "API_JWT_SECRET": "api.jwt_secret",
+            "API_TEMPERATURE_UNIT": "api.temperature_unit",
             "LOG_LEVEL": "logging.level",
             "LOG_FILE": "logging.file_path",
             "DEBUG_MODE": "debug_mode",

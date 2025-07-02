@@ -117,16 +117,25 @@ Get specific zone information.
 
 ```json
 {
-  "base_id": 1,
-  "zone_id": 1,
-  "name": "Living Room",
-  "state": 3,
-  "setpoint": 21.5,
-  "temperature": 22.0,
+  "base": {
+    "id": 1,
+    "label": "First Floor"
+  },
+  "zone": {
+    "id": 1,
+    "label": "Living Room"
+  },
+  "state": "presence",
+  "temperature": {
+    "value": 21.5,
+    "unit": "C"
+  },
+  "setpoint": {
+    "value": 22.0,
+    "unit": "C"
+  },
   "relative_humidity": 45,
-  "address": 1300,
-  "active": true,
-  "last_update": "2024-01-20T10:28:00Z"
+  "address": 1300
 }
 ```
 
@@ -138,32 +147,33 @@ Update zone parameters.
 
 ```json
 {
-  "state": 3,
+  "state": "away",
   "setpoint": 22.5
 }
 ```
 
 **State Values:**
 
-- `1`: Economy
-- `2`: Comfort
-- `3`: Auto
-- `4`: Night
-- `5`: Holiday
-- `6`: Off
+- `presence`: The zone is active and occupied.
+- `away`: The zone is in energy-saving mode.
+- `off`: The zone is turned off. The setpoint will be ignored.
+- `scheduled`: The zone follows a pre-defined schedule.
+- `holiday`: The zone is in long-term away mode.
 
 **Response:**
 
 ```json
 {
-  "base_id": 1,
-  "zone_id": 1,
-  "updated": {
-    "state": 3,
-    "setpoint": 22.5,
-    "setpoint_encoded": 28729
+  "base": {
+    "id": 1
   },
-  "timestamp": "2024-01-20T10:30:00Z"
+  "zone": {
+    "id": 1
+  },
+  "updated": {
+    "state": "away",
+    "setpoint": 22.5
+  }
 }
 ```
 
