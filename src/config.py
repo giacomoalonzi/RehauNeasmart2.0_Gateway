@@ -104,6 +104,7 @@ class AppConfig:
     enable_metrics: bool = True
     enable_swagger: bool = True
     debug_mode: bool = False
+    zones: Dict[str, Any] = field(default_factory=dict)
 
 
 class ConfigValidator:

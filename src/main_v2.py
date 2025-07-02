@@ -393,44 +393,54 @@ async def run_modbus_server(config):
             server_addr = (config.server.address, config.server.port)
             logger.info(f"Starting Modbus TCP server on {server_addr}")
             
-            server = await StartAsyncTcpServer(
-                context=context,
-                identity=identity,
-                address=server_addr,
-                framer=ModbusSocketFramer,
-                allow_reuse_address=True,
-                ignore_missing_slaves=True,
-                broadcast_enable=True,
+            # Schedule Modbus TCP server as background task
+            server_task = asyncio.create_task(
+                StartAsyncTcpServer(
+                    context=context,
+                    identity=identity,
+                    address=server_addr,
+                    framer=ModbusSocketFramer,
+                    allow_reuse_address=True,
+                    ignore_missing_slaves=True,
+                    broadcast_enable=True,
+                )
             )
             
         elif config.server.type.value == "serial":
             server_addr = config.server.serial_port
             logger.info(f"Starting Modbus Serial server on {server_addr}")
             
-            server = await StartAsyncSerialServer(
-                context=context,
-                identity=identity,
-                port=server_addr,
-                framer=ModbusRtuFramer,
-                stopbits=config.server.serial_stopbits,
-                bytesize=config.server.serial_bytesize,
-                parity=config.server.serial_parity,
-                baudrate=config.server.serial_baudrate,
-                ignore_missing_slaves=True,
-                broadcast_enable=True,
+            # Schedule Modbus Serial server as background task
+            server_task = asyncio.create_task(
+                StartAsyncSerialServer(
+                    context=context,
+                    identity=identity,
+                    port=server_addr,
+                    framer=ModbusRtuFramer,
+                    stopbits=config.server.serial_stopbits,
+                    bytesize=config.server.serial_bytesize,
+                    parity=config.server.serial_parity,
+                    baudrate=config.server.serial_baudrate,
+                    ignore_missing_slaves=True,
+                    broadcast_enable=True,
+                )
             )
         else:
             raise ValueError(f"Unsupported server type: {config.server.type}")
         
-        logger.info("Modbus server started successfully")
+        logger.info("Modbus server started successfully (running asynchronously)")
         
         # Wait for shutdown signal
         while not shutdown_event.is_set():
             await asyncio.sleep(1)
         
         logger.info("Shutting down Modbus server...")
-        if server:
-            server.shutdown()
+        # Cancel the Modbus server task on shutdown
+        server_task.cancel()
+        try:
+            await server_task
+        except asyncio.CancelledError:
+            pass
         
     except Exception as e:
         logger.exception(f"Modbus server error: {e}")
@@ -438,9 +448,10 @@ async def run_modbus_server(config):
 
 
 def signal_handler(sig, frame):
-    """Graceful shutdown handler"""
-    logger.info(f"Received signal {sig}, initiating graceful shutdown...")
+    """Immediate exit on shutdown signal"""
+    logger.info(f"Received signal {sig}, exiting immediately...")
     shutdown_event.set()
+    sys.exit(0)
 
 
 def initialize_managers(config):

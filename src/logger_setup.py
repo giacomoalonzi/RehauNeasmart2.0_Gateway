@@ -8,8 +8,9 @@ import logging
 import logging.handlers
 import sys
 import os
-from typing import Optional
+from typing import Optional, Dict
 from pythonjsonlogger import jsonlogger
+import time
 
 from config import LoggingConfig
 
@@ -114,6 +115,22 @@ def setup_logging(config: LoggingConfig, app_name: str = "neasmart-gateway") -> 
     configure_library_loggers()
     
     logging.info(f"Logging configured: level={config.level}, handlers={len(root_logger.handlers)}")
+
+    # Throttle pymodbus 'requested slave does not exist' errors to max once every 120s
+    pymodbus_logger = logging.getLogger('pymodbus')
+    orig_error = pymodbus_logger.error
+    _last_ts = {'t': 0}
+    def filtered_error(msg, *args, **kwargs):
+        text = str(msg)
+        if 'requested slave does not exist' in text.lower():
+            now = time.time()
+            if now - _last_ts['t'] < 120:
+                return
+            _last_ts['t'] = now
+            pymodbus_logger.warning(text)
+            return
+        orig_error(msg, *args, **kwargs)
+    pymodbus_logger.error = filtered_error
 
 
 def configure_library_loggers():

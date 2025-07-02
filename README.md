@@ -208,7 +208,7 @@ The gateway supports comprehensive configuration via environment variables:
 | `NEASMART_SERVER_TYPE`     | Connection type       | `tcp`     | `tcp`, `serial` |
 | `NEASMART_SERVER_ADDRESS`  | Modbus server address | `0.0.0.0` | `192.168.1.100` |
 | `NEASMART_SERVER_PORT`     | Modbus server port    | `502`     | `502`           |
-| `NEASMART_MODBUS_SLAVE_ID` | Modbus slave ID       | `240`     | `240`           |
+| `NEASMART_MODBUS_SLAVE_ID` | Modbus slave ID       | `240`     | `240`, `241`    |
 
 #### API Configuration
 

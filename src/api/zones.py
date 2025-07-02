@@ -43,6 +43,22 @@ class NotFoundError(APIError):
     status_code = 404
 
 
+def validate_configured_zone(base_id: int, zone_id: int) -> None:
+    """Validate that base_id and zone_id are defined in the configuration"""
+    config = get_config()
+    zones_conf = getattr(config, 'zones', {}) or {}
+    # If no zones config provided, skip
+    if not zones_conf:
+        return
+    base_key = str(base_id)
+    if base_key not in zones_conf:
+        raise NotFoundError(f"Invalid base ID: {base_id}. Not defined in configuration.")
+    base_def = zones_conf[base_key]
+    zone_defs = base_def.get('zones', {})
+    if str(zone_id) not in zone_defs:
+        raise NotFoundError(f"Invalid zone ID: {zone_id}. Not defined for base ID: {base_id}.")
+
+
 def handle_errors(f):
     """Decorator to handle API errors"""
     @wraps(f)
@@ -105,10 +121,15 @@ def get_zone(base_id: int, zone_id: int):
     # Validate inputs
     validate_base_id(base_id)
     validate_zone_id(zone_id)
+    # Validate against configured zones
+    validate_configured_zone(base_id, zone_id)
+    
     # Check slave_id
     config = get_config()
-    if config.modbus.slave_id != 240:
-        raise ValidationError(f"Configured slave_id is {config.modbus.slave_id}, only slave_id=240 is supported.")
+    if config.modbus.slave_id not in (240, 241):
+        raise ValidationError(
+            f"Configured slave_id is {config.modbus.slave_id}. Only slave_id=240 and 241 are supported."
+        )
     # Calculate address
     zone_addr = calculate_zone_address(base_id, zone_id)
     
@@ -140,6 +161,11 @@ def get_zone(base_id: int, zone_id: int):
         'relative_humidity': humidity,
         'address': zone_addr
     }
+    # Add labels if configured
+    zones_conf = getattr(config, 'zones', {}) or {}
+    base_conf = zones_conf.get(str(base_id), {})
+    response_data['base_label'] = base_conf.get('label')
+    response_data['zone_label'] = base_conf.get('zones', {}).get(str(zone_id))
     
     return jsonify(response_data), 200
 
@@ -151,10 +177,15 @@ def update_zone(base_id: int, zone_id: int):
     # Validate inputs
     validate_base_id(base_id)
     validate_zone_id(zone_id)
+    # Validate against configured zones
+    validate_configured_zone(base_id, zone_id)
+    
     # Check slave_id
     config = get_config()
-    if config.modbus.slave_id != 240:
-        raise ValidationError(f"Configured slave_id is {config.modbus.slave_id}, only slave_id=240 is supported.")
+    if config.modbus.slave_id not in (240, 241):
+        raise ValidationError(
+            f"Configured slave_id is {config.modbus.slave_id}. Only slave_id=240 and 241 are supported."
+        )
     
     # Parse request body
     if not request.is_json:
@@ -219,13 +250,22 @@ def list_zones():
     # Get query parameters
     base_id = request.args.get('base_id', type=int)
     include_inactive = request.args.get('include_inactive', 'false').lower() == 'true'
+    config = get_config()
+    zones_conf = getattr(config, 'zones', {}) or {}
     
     # Validate base_id if provided
     if base_id is not None:
         validate_base_id(base_id)
+        # Ensure configured
+        if zones_conf and str(base_id) not in zones_conf:
+            raise NotFoundError(f"Invalid base ID: {base_id}. Not defined in configuration.")
         base_ids = [base_id]
     else:
-        base_ids = range(1, 5)  # All base IDs
+        # All configured base IDs or default range
+        if zones_conf:
+            base_ids = [int(k) for k in zones_conf.keys()]
+        else:
+            base_ids = range(1, 5)
     
     # Get Modbus manager
     modbus = get_modbus_manager()
@@ -233,7 +273,13 @@ def list_zones():
     zones = []
     
     for bid in base_ids:
-        for zid in range(1, 13):  # All zone IDs
+        # Determine zone IDs to iterate
+        if zones_conf and str(bid) in zones_conf:
+            zone_defs = zones_conf[str(bid)].get('zones', {})
+            zids = [int(k) for k in zone_defs.keys()]
+        else:
+            zids = range(1, 13)
+        for zid in zids:
             try:
                 zone_addr = calculate_zone_address(bid, zid)
                 
@@ -253,9 +299,14 @@ def list_zones():
                 setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
                 temperature = dpt_9001.unpack_dpt9001(temperature_raw)
                 
+                # Prepare zone data with labels
+                base_conf = zones_conf.get(str(bid), {})
+                zone_defs = base_conf.get('zones', {})
                 zones.append({
                     'base_id': bid,
+                    'base_label': base_conf.get('label'),
                     'zone_id': zid,
+                    'zone_label': zone_defs.get(str(zid)),
                     'state': state,
                     'setpoint': round(setpoint, 1),
                     'temperature': round(temperature, 1),

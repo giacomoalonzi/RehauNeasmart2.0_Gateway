@@ -352,9 +352,11 @@ def get_modbus_manager(slave_id: int = None, **kwargs) -> ModbusManager:
         if _modbus_manager is None:
             if slave_id is None:
                 raise ValueError("slave_id must be provided for first initialization")
-            # Only allow slave_id 240
-            if slave_id != 240:
-                raise ValueError(f"Invalid slave_id: {slave_id}. Only slave_id=240 is supported in this deployment.")
+            # Only allow slave_id 240 and 241
+            if slave_id not in (240, 241):
+                raise ValueError(
+                    f"Invalid slave_id: {slave_id}. Only slave_id=240 and 241 are supported in this deployment."
+                )
             _modbus_manager = ModbusManager(slave_id, **kwargs)
         return _modbus_manager
 
