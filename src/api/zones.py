@@ -114,7 +114,13 @@ def get_zone(base_id: int, zone_id: int):
         setpoint_obj = None
         if state_str != "off":
             setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
-            setpoint_obj = format_temperature(setpoint, config.api)
+            if setpoint is not None and 5.0 <= setpoint <= 40.0:
+                setpoint_obj = format_temperature(setpoint, config.api)
+            else:
+                logger.warning(
+                    f"Invalid setpoint value read for zone {base_id}/{zone_id}: {setpoint}."
+                    " Setting to null."
+                )
         
     except Exception as e:
         logger.error(f"Failed to read zone {base_id}/{zone_id}: {e}")
@@ -260,7 +266,13 @@ def list_zones():
                         update_db=False
                     )
                     setpoint = dpt_9001.unpack_dpt9001(setpoint_raw)
-                    setpoint_obj = format_temperature(setpoint, config.api)
+                    if setpoint is not None and 5.0 <= setpoint <= 40.0:
+                        setpoint_obj = format_temperature(setpoint, config.api)
+                    else:
+                        logger.warning(
+                            f"Invalid setpoint value read for zone {base_id}/{zone_id}: {setpoint}."
+                            " Setting to null."
+                        )
 
                 zones.append({
                     'base': {'id': base_id, 'label': base_label},

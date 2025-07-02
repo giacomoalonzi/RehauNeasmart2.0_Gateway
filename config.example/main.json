@@ -1,0 +1,23 @@
+{
+  "// MAIN CONFIGURATION FILE": "",
+  "// This file orchestrates all configuration modules": "",
+  "// You can override specific files or use this as a single config": "",
+
+  "config_modules": {
+    "server": "./config/server.json",
+    "api": "./config/api.json",
+    "database": "./config/database.json",
+    "logging": "./config/logging.json",
+    "zones": "./config/zones.json",
+    "features": "./config/features.json"
+  },
+
+  "// QUICK OVERRIDES": "",
+  "// You can override any setting here without editing individual files": "",
+  "overrides": {
+    "// Example overrides": "",
+    "// server.address": "192.168.1.200",
+    "// api.port": 8080,
+    "// debug_mode": true
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "// FEATURE FLAGS": "",
+  "// Application features and advanced settings": "",
+
+  "features": {
+    "enable_health_endpoint": true,
+    "enable_metrics": true,
+    "enable_swagger": true,
+    "debug_mode": false
+  },
+
+  "// ADVANCED SETTINGS": "",
+  "advanced": {
+    "circuit_breaker_enabled": true,
+    "auto_discovery": false,
+    "performance_monitoring": true,
+    "cache_enabled": true,
+    "cache_ttl": 300
+  }
+}

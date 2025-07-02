@@ -283,14 +283,16 @@ class ModbusManager:
                     raise ModbusWriteError("Modbus context not initialized")
                 
                 try:
+                    # Get the correct data block from the context
                     slave_context = self._context[self.slave_id]
-                    slave_context.setValues(
-                        const.WRITE_HR_CODE,
-                        address,
-                        values
-                    )
-                    # Also update database on successful write
-                    self.db_manager.set_registers(address, values)
+                    data_block = slave_context.store.get('h')
+
+                    if not data_block:
+                        raise ModbusWriteError("Holding register data block not found")
+
+                    # Use the block's setValues to trigger the update
+                    data_block.setValues(address, values)
+                    
                 except Exception as e:
                     logger.error(f"Failed to write registers at {address}: {e}")
                     raise ModbusWriteError(f"Write failed at address {address}: {e}")

@@ -3,6 +3,10 @@
 *.log
 venv/
 
+# Configuration
+config/
+!config.example/
+
 # Python
 __pycache__/
 *.py[cod]

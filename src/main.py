@@ -163,8 +163,10 @@ async def run_modbus_server(config):
         
         # Configure server address
         if config.server.type.value == "tcp":
-            server_addr = (config.server.address, config.server.port)
-            logger.info(f"Starting Modbus TCP server on {server_addr}")
+            # For robust binding, use 0.0.0.0 unless localhost is specified
+            bind_address = "0.0.0.0" if config.server.address not in ["localhost", "127.0.0.1"] else config.server.address
+            server_addr = (bind_address, config.server.port)
+            logger.info(f"Starting Modbus TCP server on {server_addr} (listening on {bind_address})")
             
             # Schedule Modbus TCP server as background task
             server_task = asyncio.create_task(

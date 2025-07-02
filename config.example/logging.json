@@ -1,0 +1,14 @@
+{
+  "// LOGGING CONFIGURATION": "",
+  "// Application logging and monitoring settings": "",
+
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    "file_path": "./data/gateway.log",
+    "max_file_size": 10485760,
+    "backup_count": 5,
+    "enable_console": true,
+    "enable_file": true
+  }
+}

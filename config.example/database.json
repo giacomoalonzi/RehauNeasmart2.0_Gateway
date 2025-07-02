@@ -1,0 +1,14 @@
+{
+  "// DATABASE CONFIGURATION": "",
+  "// Data persistence and storage settings": "",
+
+  "database": {
+    "path": "./data/registers.db",
+    "table_name": "holding_registers",
+    "enable_fallback": true,
+    "retry_max_attempts": 3,
+    "retry_base_delay": 0.1,
+    "retry_max_delay": 1.0,
+    "health_check_interval": 30
+  }
+}

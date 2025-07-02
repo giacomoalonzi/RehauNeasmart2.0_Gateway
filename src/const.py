@@ -72,6 +72,7 @@ DATASTORE_PATH = "./data/registers.db"        # Path to local DB for register st
 
 # API state mapping (for frontend/backend logic)
 STATE_MAPPING = {
+    0: "off",
     1: "normal",
     2: "reduced",
     3: "standby",
@@ -82,6 +83,7 @@ STATE_MAPPING = {
 STATE_MAPPING_REVERSE = {v: k for k, v in STATE_MAPPING.items()}
 
 MODE_MAPPING = {
+    0: "off",
     1: "auto",
     2: "heating",
     3: "cooling",

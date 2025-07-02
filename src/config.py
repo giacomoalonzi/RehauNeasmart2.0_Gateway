@@ -170,7 +170,7 @@ class ConfigValidator:
 
 
 class ConfigLoader:
-    """Configuration loader with environment variable support"""
+    """Configuration loader with modular file and environment variable support"""
     
     ENV_PREFIX = "NEASMART_"
     
@@ -179,7 +179,8 @@ class ConfigLoader:
         """Load configuration from JSON file"""
         try:
             with open(file_path, 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+            return cls._clean_json_comments(config)
         except FileNotFoundError:
             logger.warning(f"Configuration file not found: {file_path}")
             return {}
@@ -188,6 +189,129 @@ class ConfigLoader:
         except Exception as e:
             raise ConfigError(f"Error loading configuration file: {e}")
     
+    @staticmethod
+    def _clean_json_comments(config: Dict[str, Any]) -> Dict[str, Any]:
+        """Remove JSON comments (keys starting with //) from configuration"""
+        if isinstance(config, dict):
+            return {
+                k: ConfigLoader._clean_json_comments(v) 
+                for k, v in config.items() 
+                if not k.startswith('//')
+            }
+        elif isinstance(config, list):
+            return [ConfigLoader._clean_json_comments(item) for item in config]
+        else:
+            return config
+    
+    @classmethod
+    def load_modular_config(cls, config_dir: str) -> Dict[str, Any]:
+        """Load configuration from modular files in a directory"""
+        config = {}
+        
+        # Define the module files and their expected content
+        modules = {
+            'server.json': ['server', 'modbus'],
+            'api.json': ['api'],
+            'database.json': ['database'],
+            'logging.json': ['logging'],
+            'zones.json': ['structures'],
+            'features.json': ['features', 'advanced', 'enable_health_endpoint', 'enable_metrics', 'enable_swagger', 'debug_mode']
+        }
+        
+        for module_file, expected_keys in modules.items():
+            module_path = os.path.join(config_dir, module_file)
+            if os.path.exists(module_path):
+                try:
+                    module_config = cls.load_from_file(module_path)
+                    
+                    # Merge module config into main config
+                    for key, value in module_config.items():
+                        if not key.startswith('//'):  # Skip JSON comments
+                            config[key] = value
+                    
+                    logger.info(f"Loaded configuration module: {module_file}")
+                    
+                except Exception as e:
+                    logger.error(f"Failed to load config module {module_file}: {e}")
+                    raise ConfigError(f"Error loading config module {module_file}: {e}")
+            else:
+                logger.debug(f"Optional config module not found: {module_file}")
+        
+        return config
+    
+    @classmethod
+    def load_main_config(cls, main_config_path: str) -> Dict[str, Any]:
+        """Load main configuration file that may reference modular configs"""
+        if not os.path.exists(main_config_path):
+            return {}
+        
+        main_config = cls.load_from_file(main_config_path)
+        
+        # Check if this is a modular config (has config_modules section)
+        if 'config_modules' in main_config:
+            logger.info("Loading modular configuration")
+            
+            # Load each referenced module
+            merged_config = {}
+            config_dir = os.path.dirname(main_config_path)
+            
+            for module_name, module_path in main_config['config_modules'].items():
+                # Resolve relative paths
+                if not os.path.isabs(module_path):
+                    module_path = os.path.join(config_dir, module_path)
+                
+                if os.path.exists(module_path):
+                    module_config = cls.load_from_file(module_path)
+                    cls._deep_merge(merged_config, module_config)
+                    logger.info(f"Loaded config module: {module_name} from {module_path}")
+                else:
+                    logger.warning(f"Config module not found: {module_path}")
+            
+            # Apply any overrides from main config
+            if 'overrides' in main_config:
+                for override_path, override_value in main_config['overrides'].items():
+                    if not override_path.startswith('//'):  # Skip JSON comments
+                        cls._set_nested_value(merged_config, override_path, override_value)
+                        logger.info(f"Applied config override: {override_path} = {override_value}")
+            
+            return merged_config
+        else:
+            # Regular single-file config
+            return main_config
+    
+    @classmethod
+    def detect_config_type(cls, config_path: str) -> str:
+        """Detect if config is single file, modular directory, or main file"""
+        if os.path.isfile(config_path):
+            # Check if it's a main config file with modules
+            try:
+                config = cls.load_from_file(config_path)
+                if 'config_modules' in config:
+                    return 'main_with_modules'
+                else:
+                    return 'single_file'
+            except:
+                return 'single_file'
+        elif os.path.isdir(config_path):
+            return 'modular_directory'
+        else:
+            return 'not_found'
+    
+    @classmethod
+    def load_config_auto(cls, config_path: str) -> Dict[str, Any]:
+        """Auto-detect and load configuration based on path type"""
+        config_type = cls.detect_config_type(config_path)
+        
+        if config_type == 'main_with_modules':
+            return cls.load_main_config(config_path)
+        elif config_type == 'modular_directory':
+            return cls.load_modular_config(config_path)
+        elif config_type == 'single_file':
+            return cls.load_from_file(config_path)
+        else:
+            logger.warning(f"No configuration found at: {config_path}")
+            return {}
+
     @classmethod
     def load_from_env(cls) -> Dict[str, Any]:
         """Load configuration from environment variables"""
@@ -235,7 +359,7 @@ class ConfigLoader:
                 logger.info(f"Loaded {config_path} from environment: {env_var}")
         
         return config
-    
+
     @staticmethod
     def _set_nested_value(config: Dict[str, Any], path: str, value: Any) -> None:
         """Set a nested dictionary value using dot notation"""
@@ -288,6 +412,10 @@ class ConfigLoader:
         if 'zones' in config_dict:
             config_dict['structures'] = config_dict.pop('zones')
 
+        # Handle features from features.json
+        features_config = config_dict.get('features', {})
+        advanced_config = config_dict.get('advanced', {})
+        
         # Create main config
         app_config = AppConfig(
             database=database_config,
@@ -295,8 +423,19 @@ class ConfigLoader:
             server=server_config,
             api=api_config,
             logging=logging_config,
+            # Feature flags: env vars override features.json
+            enable_health_endpoint=config_dict.get('enable_health_endpoint', 
+                                                 features_config.get('enable_health_endpoint', True)),
+            enable_metrics=config_dict.get('enable_metrics', 
+                                         features_config.get('enable_metrics', True)),
+            enable_swagger=config_dict.get('enable_swagger', 
+                                         features_config.get('enable_swagger', True)),
+            debug_mode=config_dict.get('debug_mode', 
+                                     features_config.get('debug_mode', False)),
             **{k: v for k, v in config_dict.items() 
-               if k not in ['database', 'modbus', 'server', 'api', 'logging']}
+               if k not in ['database', 'modbus', 'server', 'api', 'logging', 
+                           'features', 'advanced', 'enable_health_endpoint', 
+                           'enable_metrics', 'enable_swagger', 'debug_mode']}
         )
         
         return app_config
@@ -305,6 +444,7 @@ class ConfigLoader:
 def load_config(config_file: Optional[str] = None) -> AppConfig:
     """
     Load configuration from file and environment variables.
+    Supports both single-file and modular configuration.
     Environment variables take precedence over file configuration.
     """
     # Define project root (assuming config.py is in src/)
@@ -313,18 +453,39 @@ def load_config(config_file: Optional[str] = None) -> AppConfig:
     # Start with default configuration
     config_dict = {}
     
-    # Default config file path relative to project root
+    # Default config paths (try new modular config first, then fallback)
     if config_file is None:
-        config_file = os.environ.get(
-            f"{ConfigLoader.ENV_PREFIX}CONFIG_FILE",
-            os.path.join(project_root, "data", "config.json")
-        )
+        config_file = os.environ.get(f"{ConfigLoader.ENV_PREFIX}CONFIG_FILE")
+        
+        if config_file is None:
+            # Try new modular config first
+            modular_config_dir = os.path.join(project_root, "config")
+            main_config_file = os.path.join(project_root, "config", "main.json")
+            legacy_config_file = os.path.join(project_root, "data", "config.json")
+            
+            if os.path.exists(main_config_file):
+                config_file = main_config_file
+                logger.info("Using new modular configuration with main.json")
+            elif os.path.exists(modular_config_dir) and any(
+                os.path.exists(os.path.join(modular_config_dir, f)) 
+                for f in ['server.json', 'zones.json', 'api.json']
+            ):
+                config_file = modular_config_dir
+                logger.info("Using modular configuration directory")
+            elif os.path.exists(legacy_config_file):
+                config_file = legacy_config_file
+                logger.info("Using legacy configuration file")
+            else:
+                # Default to new config location
+                config_file = main_config_file
 
-    # Load from file if provided
-    if os.path.exists(config_file):
-        file_config = ConfigLoader.load_from_file(config_file)
+    # Load configuration using auto-detection
+    if config_file and (os.path.exists(config_file) or os.path.isdir(config_file)):
+        file_config = ConfigLoader.load_config_auto(config_file)
         config_dict = ConfigLoader.merge_configs(config_dict, file_config)
-        logger.info(f"Loaded configuration from file: {config_file}")
+        logger.info(f"Loaded configuration from: {config_file}")
+    else:
+        logger.warning(f"Configuration not found: {config_file}, using defaults")
     
     # Load from environment variables (overrides file config)
     env_config = ConfigLoader.load_from_env()

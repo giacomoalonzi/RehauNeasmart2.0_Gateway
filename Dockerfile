@@ -1,5 +1,5 @@
 # Multi-stage build for optimization
-FROM python:3.9-alpine AS builder
+FROM python:3.11-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache gcc musl-dev libffi-dev make
@@ -12,7 +12,7 @@ COPY requirements.txt .
 RUN pip install --user --no-cache-dir -r requirements.txt
 
 # Final stage
-FROM python:3.9-alpine
+FROM python:3.11-alpine
 
 # Install runtime dependencies only
 RUN apk add --no-cache libffi curl
