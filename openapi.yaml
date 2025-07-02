@@ -5,11 +5,20 @@ info:
   description: API for controlling a Rehau Neasmart 2.0 system via a Modbus gateway.
 servers:
   - url: '/api/v1'
+tags:
+  - name: Zones
+    description: 'Operations related to heating/cooling zones'
+  - name: Operation
+    description: 'Endpoints for managing global system operation mode and state'
+  - name: System
+    description: 'System-level information like temperature, notifications, and health'
 paths:
   /zones:
     get:
-      summary: 'List all configured zones'
-      description: Retrieves a list of all zones defined in the gateway configuration, along with their current state.
+      summary: 'List all configured and active zones'
+      tags:
+        - Zones
+      description: Retrieves a list of zones that are defined in the configuration file and are currently active.
       responses:
         '200':
           description: 'A list of configured zones and their status.'
@@ -17,11 +26,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ZonesListResponse'
-        '500':
-          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
   /zones/{base_id}/{zone_id}:
     get:
       summary: 'Get specific zone information'
+      tags:
+        - Zones
+      description: Retrieves the current state, temperature, setpoint, and other details for a single configured zone.
       parameters:
         - name: base_id
           in: path
@@ -46,12 +58,12 @@ paths:
                 $ref: '#/components/schemas/Zone'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
     post:
-      summary: 'Update zone parameters'
+      summary: 'Update zone state or setpoint'
+      tags:
+        - Zones
       description: Update the state and/or setpoint for a specific zone.
       parameters:
         - name: base_id
@@ -79,12 +91,141 @@ paths:
                 $ref: '#/components/schemas/ZoneUpdateResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+  /operation/mode:
+    get:
+      summary: 'Get global operation mode'
+      tags:
+        - Operation
+      description: 'Retrieves the current global operation mode of the system (e.g., "auto", "heating").'
+      responses:
+        '200':
+          description: 'Current operation mode.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationModeResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      summary: 'Set global operation mode'
+      tags:
+        - Operation
+      description: 'Sets a new global operation mode for the system.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationModeUpdateRequest'
+      responses:
+        '200':
+          description: 'Mode update accepted.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationModeUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /operation/state:
+    get:
+      summary: 'Get global operation state'
+      tags:
+        - Operation
+      description: 'Retrieves the current global operation state of the system (e.g., "normal", "standby").'
+      responses:
+        '200':
+          description: 'Current operation state.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationStateResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      summary: 'Set global operation state'
+      tags:
+        - Operation
+      description: 'Sets a new global operation state for the system.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationStateUpdateRequest'
+      responses:
+        '200':
+          description: 'State update accepted.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationStateUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /temperature/outside:
+    get:
+      summary: 'Get outside temperature'
+      tags:
+        - System
+      description: 'Retrieves the current outside temperature and the filtered outside temperature.'
+      responses:
+        '200':
+          description: 'Successful response with temperature data.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutsideTemperatureResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /notifications:
+    get:
+      summary: 'Get system notifications status'
+      tags:
+        - System
+      description: 'Checks for the presence of hints, warnings, and errors in the system.'
+      responses:
+        '200':
+          description: 'Successful response with notification statuses.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationsResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /health:
+    get:
+      summary: 'Get system health status'
+      tags:
+        - System
+      description: 'Provides a detailed health check of the gateway, including database and Modbus connectivity.'
+      responses:
+        '200':
+          description: 'System is healthy or degraded.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: 'System is unhealthy.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
 components:
   schemas:
+    OperationMode:
+      type: string
+      enum: ['auto', 'heating', 'cooling', 'manual heating', 'manual cooling']
+      example: 'auto'
+    OperationState:
+      type: string
+      enum: ['normal', 'reduced', 'standby', 'scheduled', 'party', 'holiday']
+      example: 'normal'
     BaseInfo:
       type: object
       properties:
@@ -112,8 +253,8 @@ components:
           example: 21.5
         unit:
           type: string
-          enum: [C, F]
-          example: 'C'
+          enum: ['°C', '°F']
+          example: '°C'
     Zone:
       type: object
       properties:
@@ -122,9 +263,7 @@ components:
         zone:
           $ref: '#/components/schemas/ZoneInfo'
         state:
-          type: string
-          enum: ['presence', 'away', 'off', 'scheduled', 'holiday']
-          example: 'presence'
+          $ref: '#/components/schemas/OperationState'
         temperature:
           $ref: '#/components/schemas/Temperature'
         setpoint:
@@ -150,10 +289,7 @@ components:
       type: object
       properties:
         state:
-          type: string
-          enum: ['presence', 'away', 'off', 'scheduled', 'holiday']
-          description: 'Descriptive state for the zone.'
-          example: 'away'
+          $ref: '#/components/schemas/OperationState'
         setpoint:
           type: number
           format: float
@@ -178,6 +314,105 @@ components:
         - base
         - zone
         - updated
+    OperationModeResponse:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/OperationMode'
+    OperationModeUpdateRequest:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          $ref: '#/components/schemas/OperationMode'
+    OperationModeUpdateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: 'success'
+        mode:
+          $ref: '#/components/schemas/OperationMode'
+    OperationStateResponse:
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/OperationState'
+    OperationStateUpdateRequest:
+      type: object
+      required:
+        - state
+      properties:
+        state:
+          $ref: '#/components/schemas/OperationState'
+    OperationStateUpdateResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: 'success'
+        state:
+          $ref: '#/components/schemas/OperationState'
+    OutsideTemperatureResponse:
+      type: object
+      properties:
+        outside_temperature:
+          $ref: '#/components/schemas/Temperature'
+        filtered_outside_temperature:
+          $ref: '#/components/schemas/Temperature'
+    NotificationsResponse:
+      type: object
+      properties:
+        hints_present:
+          type: boolean
+          example: false
+        warnings_present:
+          type: boolean
+          example: true
+        errors_present:
+          type: boolean
+          example: false
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: 'healthy'
+        version:
+          type: string
+          example: '2.1.0'
+        database:
+          type: object
+          properties:
+            healthy:
+              type: boolean
+            type:
+              type: string
+            details:
+              type: string
+        modbus:
+          type: object
+          properties:
+            healthy:
+              type: boolean
+            circuit_breaker:
+              type: object
+              properties:
+                state:
+                  type: string
+                failures:
+                  type: integer
+        configuration:
+          type: object
+          properties:
+            server_type:
+              type: string
+            api_auth_enabled:
+              type: boolean
+            fallback_enabled:
+              type: boolean
     Error:
       type: object
       properties:
@@ -194,12 +429,6 @@ components:
   responses:
     BadRequest:
       description: 'Bad request (e.g., validation error)'
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: 'Resource not found'
       content:
         application/json:
           schema:

@@ -5,11 +5,11 @@ Handles zone operations with robust error handling.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from flask import Blueprint, request, jsonify
-from functools import wraps
 
 from modbus_manager import get_modbus_manager, ModbusException
+from api.errors import handle_errors, ValidationError, NotFoundError
 import dpt_9001
 import const
 from config import get_config, APIConfig, AppConfig
@@ -19,34 +19,6 @@ logger = logging.getLogger(__name__)
 zones_bp = Blueprint('zones', __name__, url_prefix='/api/v1/zones')
 
 
-class APIError(Exception):
-    """Base API error"""
-    status_code = 500
-    
-    def __init__(self, message: str, status_code: Optional[int] = None, details: Optional[Dict] = None):
-        super().__init__()
-        self.message = message
-        if status_code is not None:
-            self.status_code = status_code
-        self.details = details
-    
-    def to_dict(self) -> Dict[str, Any]:
-        data = {'error': self.message, 'status': self.status_code}
-        if self.details:
-            data['details'] = self.details
-        return data
-
-
-class ValidationError(APIError):
-    """Validation error"""
-    status_code = 400
-
-
-class NotFoundError(APIError):
-    """Resource not found error"""
-    status_code = 404
-
-
 def get_zone_labels(base_id: int, zone_id: int, config: AppConfig) -> (str, str):
     """Get labels for base and zone from configuration"""
     zones_conf = getattr(config, 'zones', {}) or {}
@@ -54,32 +26,6 @@ def get_zone_labels(base_id: int, zone_id: int, config: AppConfig) -> (str, str)
     base_label = base_conf.get('label', f"Base {base_id}")
     zone_label = base_conf.get('zones', {}).get(str(zone_id), f"Zone {zone_id}")
     return base_label, zone_label
-
-
-def handle_errors(f):
-    """Decorator to handle API errors"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except APIError as e:
-            logger.warning(f"API error in {f.__name__}: {e.message}")
-            return jsonify(e.to_dict()), e.status_code
-        except ModbusException as e:
-            logger.error(f"Modbus error in {f.__name__}: {str(e)}")
-            return jsonify({
-                'error': 'Communication error with Modbus device',
-                'details': str(e),
-                'status': 503
-            }), 503
-        except Exception as e:
-            logger.exception(f"Unexpected error in {f.__name__}")
-            return jsonify({
-                'error': 'Internal server error',
-                'status': 500
-            }), 500
-    
-    return decorated_function
 
 
 def validate_base_id(base_id: int) -> None:
@@ -97,11 +43,11 @@ def validate_zone_id(zone_id: int) -> None:
 def validate_and_convert_state(state: str) -> int:
     """Validate and convert descriptive state to numeric"""
     if not isinstance(state, str):
-        raise ValidationError("State must be a string (e.g., 'presence', 'off')")
+        raise ValidationError("State must be a string (e.g., 'normal', 'standby')")
     
     numeric_state = const.STATE_MAPPING_REVERSE.get(state.lower())
     if numeric_state is None:
-        valid_states = list(const.STATE_MAPPING_REVERSE.keys())
+        valid_states: List[str] = list(const.STATE_MAPPING_REVERSE.keys())
         raise ValidationError(f"Invalid state: {state}. Must be one of {valid_states}")
     
     return numeric_state
@@ -114,8 +60,14 @@ def validate_setpoint(setpoint: float) -> None:
 
 
 def calculate_zone_address(base_id: int, zone_id: int) -> int:
-    """Calculate zone address from base and zone IDs"""
-    return (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+    """
+    Calculate the base Modbus address for a zone.
+
+    The address is calculated based on the base station ID and the zone ID,
+    using multipliers defined in the system constants.
+    Formula: (base_id - 1) * MULTIPLIER + zone_id * MULTIPLIER
+    """
+    return (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
 
 
 def format_temperature(value: float, config: APIConfig) -> Dict[str, Any]:
@@ -126,7 +78,33 @@ def format_temperature(value: float, config: APIConfig) -> Dict[str, Any]:
 @zones_bp.route('/<int:base_id>/<int:zone_id>', methods=['GET'])
 @handle_errors
 def get_zone(base_id: int, zone_id: int):
-    """Get structured zone information"""
+    """
+    Get detailed information for a specific zone.
+
+    Retrieves the current state, temperature, setpoint, and other details for a
+    single configured zone.
+
+    Args:
+        base_id: The ID of the base station (1-4).
+        zone_id: The ID of the zone (1-12).
+
+    Returns:
+        A JSON object containing the zone's details.
+        Example:
+        {
+            "base": {"id": 1, "label": "Main Floor"},
+            "zone": {"id": 1, "label": "Living Room"},
+            "state": "normal",
+            "temperature": {"value": 21.5, "unit": "°C"},
+            "setpoint": {"value": 22.0, "unit": "°C"},
+            "relative_humidity": 45,
+            "address": 101
+        }
+
+    Raises:
+        ValidationError (400): If base_id or zone_id are invalid.
+        APIError (503): If communication with the Modbus device fails.
+    """
     validate_base_id(base_id)
     validate_zone_id(zone_id)
     
@@ -186,7 +164,38 @@ def get_zone(base_id: int, zone_id: int):
 @zones_bp.route('/<int:base_id>/<int:zone_id>', methods=['POST'])
 @handle_errors
 def update_zone(base_id: int, zone_id: int):
-    """Update zone parameters with descriptive state"""
+    """
+    Update the state or setpoint for a specific zone.
+
+    Allows setting a new state (e.g., 'standby') or a new temperature setpoint.
+    At least one of 'state' or 'setpoint' must be provided in the payload.
+
+    Args:
+        base_id: The ID of the base station (1-4).
+        zone_id: The ID of the zone (1-12).
+
+    Payload:
+        {
+            "state": "normal",
+            "setpoint": 22.5
+        }
+
+    Returns:
+        A JSON object confirming the updated values.
+        Example:
+        {
+            "base": {"id": 1},
+            "zone": {"id": 1},
+            "updated": {
+                "state": "normal",
+                "setpoint": 22.5
+            }
+        }
+
+    Raises:
+        ValidationError (400): If payload is invalid or IDs are out of range.
+        APIError (503): If communication with the Modbus device fails.
+    """
     validate_base_id(base_id)
     validate_zone_id(zone_id)
     
@@ -241,7 +250,31 @@ def update_zone(base_id: int, zone_id: int):
 @zones_bp.route('/', methods=['GET'])
 @handle_errors
 def list_zones():
-    """List all configured zones with their structured status"""
+    """
+    List all configured and active zones.
+
+    Retrieves a list of zones that are defined in the configuration file and
+    are currently active (i.e., not in a fully off state).
+
+    Returns:
+        A JSON object containing a list of zone objects and a count.
+        Example:
+        {
+            "zones": [
+                {
+                    "base": {"id": 1, "label": "Main Floor"},
+                    "zone": {"id": 1, "label": "Living Room"},
+                    "state": "normal",
+                    "temperature": {"value": 21.5, "unit": "°C"},
+                    "setpoint": {"value": 22.0, "unit": "°C"}
+                }
+            ],
+            "count": 1
+        }
+
+    Raises:
+        APIError (503): If communication with the Modbus device fails during reads.
+    """
     config = get_config()
     zones_conf = getattr(config, 'zones', {}) or {}
     
