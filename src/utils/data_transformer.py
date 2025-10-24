@@ -8,7 +8,7 @@ and frontend (camelCase) formats for API responses.
 """
 
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 
 def to_camel_case(snake_str: str) -> str:
@@ -40,7 +40,10 @@ def to_snake_case(camel_str: str) -> str:
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
-def transform_dict_to_camel_case(data: Dict[str, Any]) -> Dict[str, Any]:
+def transform_dict_to_camel_case(
+    data: Dict[str, Any],
+    allowed_keys: Optional[Iterable[str]] = None,
+) -> Dict[str, Any]:
     """
     Transform dictionary keys from snake_case to camelCase.
     
@@ -54,13 +57,14 @@ def transform_dict_to_camel_case(data: Dict[str, Any]) -> Dict[str, Any]:
         return data
     
     result = {}
+    allowed = set(allowed_keys) if allowed_keys is not None else None
     for key, value in data.items():
-        camel_key = to_camel_case(key)
+        camel_key = to_camel_case(key) if allowed is None or key in allowed else key
         if isinstance(value, dict):
-            result[camel_key] = transform_dict_to_camel_case(value)
+            result[camel_key] = transform_dict_to_camel_case(value, allowed)
         elif isinstance(value, list):
             result[camel_key] = [
-                transform_dict_to_camel_case(item) if isinstance(item, dict) else item
+                transform_dict_to_camel_case(item, allowed) if isinstance(item, dict) else item
                 for item in value
             ]
         else:
@@ -69,7 +73,10 @@ def transform_dict_to_camel_case(data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def transform_dict_to_snake_case(data: Dict[str, Any]) -> Dict[str, Any]:
+def transform_dict_to_snake_case(
+    data: Dict[str, Any],
+    allowed_keys: Optional[Iterable[str]] = None,
+) -> Dict[str, Any]:
     """
     Transform dictionary keys from camelCase to snake_case.
     
@@ -83,13 +90,14 @@ def transform_dict_to_snake_case(data: Dict[str, Any]) -> Dict[str, Any]:
         return data
     
     result = {}
+    allowed = set(allowed_keys) if allowed_keys is not None else None
     for key, value in data.items():
-        snake_key = to_snake_case(key)
+        snake_key = to_snake_case(key) if allowed is None or key in allowed else key
         if isinstance(value, dict):
-            result[snake_key] = transform_dict_to_snake_case(value)
+            result[snake_key] = transform_dict_to_snake_case(value, allowed)
         elif isinstance(value, list):
             result[snake_key] = [
-                transform_dict_to_snake_case(item) if isinstance(item, dict) else item
+                transform_dict_to_snake_case(item, allowed) if isinstance(item, dict) else item
                 for item in value
             ]
         else:
@@ -98,7 +106,11 @@ def transform_dict_to_snake_case(data: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
-def transform_api_response(data: Union[Dict, List, Any], to_camel: bool = True) -> Union[Dict, List, Any]:
+def transform_api_response(
+    data: Union[Dict, List, Any],
+    to_camel: bool = True,
+    allowed_keys: Optional[Iterable[str]] = None,
+) -> Union[Dict, List, Any]:
     """
     Transform API response data between snake_case and camelCase.
     
@@ -110,10 +122,14 @@ def transform_api_response(data: Union[Dict, List, Any], to_camel: bool = True) 
         Transformed data
     """
     if isinstance(data, dict):
-        return transform_dict_to_camel_case(data) if to_camel else transform_dict_to_snake_case(data)
+        return (
+            transform_dict_to_camel_case(data, allowed_keys)
+            if to_camel
+            else transform_dict_to_snake_case(data, allowed_keys)
+        )
     elif isinstance(data, list):
         return [
-            transform_api_response(item, to_camel) for item in data
+            transform_api_response(item, to_camel, allowed_keys) for item in data
         ]
     else:
         return data

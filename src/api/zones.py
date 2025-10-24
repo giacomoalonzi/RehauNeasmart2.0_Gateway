@@ -11,6 +11,9 @@ _logger = logging.getLogger(__name__)
 
 zones_bp = Blueprint('zones', __name__)
 
+# NOTE: Future v2 endpoints should return human-readable zone states (e.g. "presence")
+# as described in API_DOCS.md, mirroring the operation v2 implementation.
+
 
 @zones_bp.route("/zones/<int:base_id>/<int:zone_id>", methods=['POST', 'GET'])
 def zone(base_id=None, zone_id=None):

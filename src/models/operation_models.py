@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Dict, Tuple, Union
+
+from utils import state_converter
 
 
 @dataclass
@@ -10,14 +12,17 @@ class OperationMode:
     
     mode: int
     
-    def to_dict(self) -> dict:
+    def to_dict(self, readable: bool = False) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {'mode': self.mode}
+        value: Union[int, str] = state_converter.mode_to_name(self.mode) if readable else self.mode
+        return {'mode': value}
     
     @classmethod
-    def from_dict(cls, data: dict) -> 'OperationMode':
-        """Create OperationMode from dictionary."""
-        return cls(mode=data.get('mode'))
+    def from_dict(cls, data: Dict[str, Union[int, str]]) -> 'OperationMode':
+        """Create OperationMode from dictionary allowing string or int."""
+        value = data.get('mode')
+        normalized = state_converter.name_to_mode(value)
+        return cls(mode=normalized)
     
     def validate(self) -> tuple[bool, str]:
         """
@@ -41,14 +46,17 @@ class OperationState:
     
     state: int
     
-    def to_dict(self) -> dict:
+    def to_dict(self, readable: bool = False) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {'state': self.state}
+        value: Union[int, str] = state_converter.state_to_name(self.state) if readable else self.state
+        return {'state': value}
     
     @classmethod
-    def from_dict(cls, data: dict) -> 'OperationState':
-        """Create OperationState from dictionary."""
-        return cls(state=data.get('state'))
+    def from_dict(cls, data: Dict[str, Union[int, str]]) -> 'OperationState':
+        """Create OperationState from dictionary allowing string or int."""
+        value = data.get('state')
+        normalized = state_converter.name_to_state(value)
+        return cls(state=normalized)
     
     def validate(self) -> tuple[bool, str]:
         """
