@@ -7,3 +7,4 @@ venv/
 old_main.py
 src/__pycache__/
 config
+old_*
