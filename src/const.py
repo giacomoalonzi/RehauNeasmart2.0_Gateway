@@ -155,6 +155,18 @@ STATE_MAPPING = {
 }
 STATE_MAPPING_REVERSE = {v: k for k, v in STATE_MAPPING.items()}
 
+# Zone-specific state mapping (more intuitive for zones)
+ZONE_STATE_MAPPING = {
+    0: "off",
+    1: "presence",      # Zone is active and occupied
+    2: "away",          # Zone is in energy-saving mode
+    3: "standby",       # Zone is in standby
+    4: "scheduled",     # Zone follows a schedule
+    5: "party",         # Zone is in party mode
+    6: "holiday"        # Zone is in long-term away mode
+}
+ZONE_STATE_MAPPING_REVERSE = {v: k for k, v in ZONE_STATE_MAPPING.items()}
+
 MODE_MAPPING = {
     0: "off",
     1: "auto",

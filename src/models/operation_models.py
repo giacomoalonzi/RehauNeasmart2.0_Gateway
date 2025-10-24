@@ -12,7 +12,7 @@ class OperationMode:
     
     mode: int
     
-    def to_dict(self, readable: bool = False) -> dict:
+    def to_dict(self, readable: bool = True) -> dict:
         """Convert to dictionary for JSON serialization."""
         value: Union[int, str] = state_converter.mode_to_name(self.mode) if readable else self.mode
         return {'mode': value}
@@ -46,7 +46,7 @@ class OperationState:
     
     state: int
     
-    def to_dict(self, readable: bool = False) -> dict:
+    def to_dict(self, readable: bool = True) -> dict:
         """Convert to dictionary for JSON serialization."""
         value: Union[int, str] = state_converter.state_to_name(self.state) if readable else self.state
         return {'state': value}

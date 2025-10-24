@@ -12,8 +12,8 @@ _logger = logging.getLogger(__name__)
 
 zones_bp = Blueprint('zones', __name__)
 
-# NOTE: Future v2 endpoints should return human-readable zone states (e.g. "presence")
-# as described in API_DOCS.md, mirroring the operation v2 implementation.
+# NOTE: Zone endpoints now return human-readable zone states (e.g. "presence", "away")
+# as described in API_DOCS.md, using zone-specific state mappings.
 
 
 @zones_bp.route("/zones", methods=['GET'])
@@ -62,7 +62,7 @@ def get_all_zones():
                         'baseLabel': base_label,
                         'zoneId': zone_id,
                         'zoneLabel': zone_label,
-                        'state': zone_data.state,
+                        'state': zone_data.to_dict(readable=True)['state'],
                         'setpoint': zone_data.setpoint,
                         'temperature': zone_data.temperature,
                         'relativeHumidity': zone_data.relative_humidity
@@ -128,7 +128,7 @@ def zone(base_id=None, zone_id=None):
         try:
             zone_data = zone_service.get_zone_data(base_id, zone_id)
             return current_app.response_class(
-                response=json.dumps(zone_data.to_dict()),
+                response=json.dumps(zone_data.to_dict(readable=True)),
                 status=200,
                 mimetype='application/json'
             )

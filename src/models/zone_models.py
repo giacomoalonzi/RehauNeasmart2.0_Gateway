@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from utils import state_converter
+
 
 @dataclass
 class ZoneData:
@@ -13,10 +15,11 @@ class ZoneData:
     temperature: float
     relative_humidity: int
     
-    def to_dict(self) -> dict:
+    def to_dict(self, readable: bool = True) -> dict:
         """Convert to dictionary for JSON serialization."""
+        state_value = state_converter.zone_state_to_name(self.state) if readable else self.state
         return {
-            'state': self.state,
+            'state': state_value,
             'setpoint': self.setpoint,
             'temperature': self.temperature,
             'relativeHumidity': self.relative_humidity  # camelCase for frontend
@@ -33,8 +36,12 @@ class ZoneRequest:
     @classmethod
     def from_dict(cls, data: dict) -> 'ZoneRequest':
         """Create ZoneRequest from dictionary."""
+        state_value = data.get('state')
+        if state_value is not None:
+            # Convert string state to integer if needed
+            state_value = state_converter.name_to_zone_state(state_value)
         return cls(
-            state=data.get('state'),
+            state=state_value,
             setpoint=data.get('setpoint')
         )
     

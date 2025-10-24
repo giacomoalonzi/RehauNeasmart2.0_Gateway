@@ -24,14 +24,14 @@ def _get_service() -> OperationService:
 
 @legacy_operation_bp.route("/mode", methods=['POST', 'GET'])
 def mode():
-    """Legacy mode endpoint returning integer payloads."""
+    """Legacy mode endpoint returning human-readable payloads."""
     service = _get_service()
 
     if request.method == 'GET':
         try:
             mode_value = service.get_mode()
             operation_mode = OperationMode(mode=mode_value)
-            response_data = operation_mode.to_dict()
+            response_data = operation_mode.to_dict(readable=True)
             response_data = transform_api_response(response_data, to_camel=True)
             response_data = apply_field_mappings(response_data, reverse=False)
             return current_app.response_class(
@@ -86,14 +86,14 @@ def mode():
 
 @legacy_operation_bp.route("/state", methods=['POST', 'GET'])
 def state():
-    """Legacy state endpoint returning integer payloads."""
+    """Legacy state endpoint returning human-readable payloads."""
     service = _get_service()
 
     if request.method == 'GET':
         try:
             state_value = service.get_state()
             operation_state = OperationState(state=state_value)
-            response_data = operation_state.to_dict()
+            response_data = operation_state.to_dict(readable=True)
             response_data = transform_api_response(response_data, to_camel=True)
             response_data = apply_field_mappings(response_data, reverse=False)
             return current_app.response_class(

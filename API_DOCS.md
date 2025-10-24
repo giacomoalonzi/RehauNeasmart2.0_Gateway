@@ -154,11 +154,15 @@ Update zone parameters.
 
 **State Values:**
 
-- `presence`: The zone is active and occupied.
-- `away`: The zone is in energy-saving mode.
-- `off`: The zone is turned off. The setpoint will be ignored.
-- `scheduled`: The zone follows a pre-defined schedule.
-- `holiday`: The zone is in long-term away mode.
+- `"off"`: The zone is turned off. The setpoint will be ignored.
+- `"presence"`: The zone is active and occupied.
+- `"away"`: The zone is in energy-saving mode.
+- `"standby"`: The zone is in standby mode.
+- `"scheduled"`: The zone follows a pre-defined schedule.
+- `"party"`: The zone is in party mode.
+- `"holiday"`: The zone is in long-term away mode.
+
+**Note:** The API accepts both human-readable strings (e.g., "presence") and legacy integer values (e.g., 1) for backward compatibility.
 
 **Response:**
 
@@ -216,17 +220,18 @@ Get global operation mode.
 
 ```json
 {
-  "mode": 2
+  "mode": "heating"
 }
 ```
 
 **Mode Values:**
 
-- `1`: Heating
-- `2`: Cooling
-- `3`: Auto
-- `4`: Ventilation
-- `5`: Dehumidification
+- `"off"`: System is off
+- `"auto"`: Automatic mode
+- `"heating"`: Heating mode
+- `"cooling"`: Cooling mode
+- `"manual heating"`: Manual heating mode
+- `"manual cooling"`: Manual cooling mode
 
 #### POST /mode (Legacy v1)
 
@@ -236,9 +241,11 @@ Set global operation mode.
 
 ```json
 {
-  "mode": 2
+  "mode": "heating"
 }
 ```
+
+**Note:** The API accepts both human-readable strings (e.g., "heating") and legacy integer values (e.g., 2) for backward compatibility.
 
 #### GET /state (Legacy v1)
 
@@ -248,11 +255,33 @@ Get global operation state.
 
 ```json
 {
-  "state": 1
+  "state": "normal"
 }
 ```
 
+**State Values:**
+
+- `"off"`: System is off
+- `"normal"`: Normal operation
+- `"reduced"`: Reduced operation
+- `"standby"`: Standby mode
+- `"scheduled"`: Scheduled operation
+- `"party"`: Party mode
+- `"holiday"`: Holiday/absent mode
+
 #### POST /state (Legacy v1)
+
+Set global operation state.
+
+**Request Body:**
+
+```json
+{
+  "state": "normal"
+}
+```
+
+**Note:** The API accepts both human-readable strings (e.g., "normal") and legacy integer values (e.g., 1) for backward compatibility.
 
 #### GET /api/v2/operation/mode
 
