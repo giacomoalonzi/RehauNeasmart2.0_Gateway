@@ -9,6 +9,7 @@ from typing import Dict, Any, List
 from flask import Blueprint, request, jsonify
 
 from modbus_manager import get_modbus_manager, ModbusException
+from database import get_database_manager
 from api.errors import handle_errors, ValidationError, NotFoundError
 import dpt_9001
 import const
@@ -167,7 +168,7 @@ def update_zone(base_id: int, zone_id: int):
         raise ValidationError("At least one of 'state' or 'setpoint' must be provided")
     
     zone_addr = calculate_zone_address(base_id, zone_id)
-    modbus = get_modbus_manager()
+    db_manager = get_database_manager()
     
     response_data = {
         'base': {'id': base_id},
@@ -178,9 +179,12 @@ def update_zone(base_id: int, zone_id: int):
     if state_str is not None:
         state_numeric = validate_and_convert_state(state_str)
         try:
-            modbus.write_register(zone_addr, state_numeric)
+            # Write state to database instead of direct Modbus register
+            db_manager.set_register(zone_addr, state_numeric)
+            logger.info(f"Updated zone {base_id}/{zone_id} state to {state_str} (numeric: {state_numeric}) at address {zone_addr}")
             response_data['updated']['state'] = state_str
         except Exception as e:
+            logger.error(f"Failed to update state in database: {e}")
             raise ModbusException(f"Failed to update state: {str(e)}")
     
     if setpoint is not None:
@@ -194,9 +198,12 @@ def update_zone(base_id: int, zone_id: int):
             
             try:
                 encoded_setpoint = dpt_9001.pack_dpt9001(float(setpoint))
-                modbus.write_register(zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET, encoded_setpoint)
+                # Write setpoint to database instead of direct Modbus register
+                db_manager.set_register(zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET, encoded_setpoint)
+                logger.info(f"Updated zone {base_id}/{zone_id} setpoint to {setpoint}°C (encoded: {encoded_setpoint}) at address {zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET}")
                 response_data['updated']['setpoint'] = float(setpoint)
             except Exception as e:
+                logger.error(f"Failed to update setpoint in database: {e}")
                 raise ModbusException(f"Failed to update setpoint: {str(e)}")
     
     return jsonify(response_data), 200

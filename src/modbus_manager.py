@@ -169,9 +169,15 @@ class ThreadSafeDataBlock(ModbusSequentialDataBlock):
                 # Continue operation even if database fails
     
     def getValues(self, address: int, count: int = 1) -> List[int]:
-        """Get values with thread safety"""
+        """Get values from database with thread safety"""
         with self._lock:
-            return super().getValues(address, count)
+            try:
+                # Always read from database to get the latest values
+                return self.db_manager.get_registers(address, count)
+            except Exception as e:
+                logger.error(f"Failed to read from database at {address}: {e}")
+                # Fallback to in-memory values if database fails
+                return super().getValues(address, count)
 
 
 class ModbusManager:
