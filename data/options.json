@@ -1,6 +1,9 @@
 {
+
   "listen_address": "0.0.0.0",
   "listen_port": "502",
   "server_type": "tcp",
-  "slave_id": "240"
+  "slave_id": "240",
+  "server_address": "0.0.0.0",
+  "server_port": "5001"
 }
