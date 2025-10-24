@@ -47,7 +47,7 @@ def show_status():
     
     print("=== Gateway Status ===")
     print(f"Enabled: {gateway_config.get('enabled', True)}")
-    print(f"Host: {gateway_config.get('host', '192.168.1.200')}")
+    print(f"Host: {gateway_config.get('host', '0.0.0.0')}")
     print(f"Port: {gateway_config.get('port', 502)}")
     print(f"Neasmart Slave ID: {gateway_config.get('neasmart_slave_id', 240)}")
     print(f"Timeout: {gateway_config.get('timeout', 5)}s")

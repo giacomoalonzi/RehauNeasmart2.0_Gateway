@@ -62,7 +62,16 @@ class ConfigManager:
             config_data['slave_id'] = int(config_data.get('slave_id', 240))
             config_data['server_port'] = int(config_data.get('server_port', 5001))
             
-            self._config = ServerConfig(**config_data)
+            # Only pass expected fields to ServerConfig
+            server_config_data = {
+                'listen_address': config_data.get('listen_address', '0.0.0.0'),
+                'listen_port': config_data.get('listen_port', 502),
+                'server_type': config_data.get('server_type', 'tcp'),
+                'slave_id': config_data.get('slave_id', 240),
+                'server_port': config_data.get('server_port', 5001)
+            }
+            
+            self._config = ServerConfig(**server_config_data)
             _logger.info(f"Configuration loaded from {self.config_path}")
             return self._config
             

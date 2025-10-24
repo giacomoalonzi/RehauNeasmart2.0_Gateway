@@ -27,25 +27,27 @@ class NeasmartModbusClient:
     setpoints directly to the Neasmart device to ensure changes persist.
     """
     
-    def __init__(self, gateway_host: str = "192.168.1.200", gateway_port: int = 502, 
-                 neasmart_slave_id: int = 240):
+    def __init__(self, gateway_host: Optional[str] = None, gateway_port: Optional[int] = None, 
+                 neasmart_slave_id: Optional[int] = None):
         """
         Initialize Modbus client.
         
         Args:
-            gateway_host: IP address of Waveshare gateway
-            gateway_port: Port of Waveshare gateway (usually 502)
-            neasmart_slave_id: Modbus slave ID of the Neasmart device
+            gateway_host: IP address of Waveshare gateway (defaults to config file)
+            gateway_port: Port of Waveshare gateway (defaults to config file)
+            neasmart_slave_id: Modbus slave ID of the Neasmart device (defaults to config file)
         """
-        self.gateway_host = gateway_host
-        self.gateway_port = gateway_port
-        self.neasmart_slave_id = neasmart_slave_id
+        # Load gateway configuration first
+        self.config = self._load_gateway_config()
+        
+        # Use provided values or fall back to config
+        self.gateway_host = gateway_host or self.config.get("gateway", {}).get("host", "127.0.0.1")
+        self.gateway_port = gateway_port or self.config.get("gateway", {}).get("port", 502)
+        self.neasmart_slave_id = neasmart_slave_id or self.config.get("gateway", {}).get("neasmart_slave_id", 240)
+        
         self.client: Optional[AsyncModbusTcpClient] = None
         self.connected = False
         self._connect_lock = asyncio.Lock()
-        
-        # Load gateway configuration
-        self.config = self._load_gateway_config()
         self.consecutive_errors = 0
         self.last_error_time = 0
     
@@ -323,15 +325,16 @@ class NeasmartModbusClient:
 _client: Optional[NeasmartModbusClient] = None
 
 
-def get_client(gateway_host: str = "192.168.1.200", gateway_port: int = 502, 
-               neasmart_slave_id: int = 240) -> NeasmartModbusClient:
+def get_client(gateway_host: Optional[str] = None, gateway_port: Optional[int] = None, 
+               neasmart_slave_id: Optional[int] = None) -> NeasmartModbusClient:
     """
     Get or create the global Neasmart Modbus client instance.
+    Configuration values are read from config/gateway.json by default.
     
     Args:
-        gateway_host: IP address of Waveshare gateway
-        gateway_port: Port of Waveshare gateway
-        neasmart_slave_id: Modbus slave ID of Neasmart device
+        gateway_host: IP address of Waveshare gateway (optional, uses config if not provided)
+        gateway_port: Port of Waveshare gateway (optional, uses config if not provided)
+        neasmart_slave_id: Modbus slave ID of Neasmart device (optional, uses config if not provided)
         
     Returns:
         NeasmartModbusClient: Global client instance

@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from flask import Blueprint, request, current_app
 from models.zone_models import ZoneRequest
 from models.response_models import ErrorResponse
@@ -13,6 +14,91 @@ zones_bp = Blueprint('zones', __name__)
 
 # NOTE: Future v2 endpoints should return human-readable zone states (e.g. "presence")
 # as described in API_DOCS.md, mirroring the operation v2 implementation.
+
+
+@zones_bp.route("/zones", methods=['GET'])
+def get_all_zones():
+    """
+    Get all configured zones from options.json with their current values.
+    
+    Returns:
+        JSON response with all zones and their current state, temperature, setpoint, and humidity
+    """
+    try:
+        # Load options.json
+        options_path = "./data/options.json"
+        if not os.path.exists(options_path):
+            return current_app.response_class(
+                response=json.dumps(ErrorResponse("Configuration file not found").to_dict()),
+                status=404,
+                mimetype='application/json'
+            )
+        
+        with open(options_path, 'r') as f:
+            options_data = json.load(f)
+        
+        # Get services from app context
+        context = current_app.config['MODBUS_CONTEXT']
+        slave_id = current_app.config['SLAVE_ID']
+        zone_service = ZoneService(context, slave_id)
+        
+        # Build response with all zones
+        zones_response = []
+        
+        for structure in options_data.get('structures', []):
+            base_id = structure.get('base_id')
+            base_label = structure.get('base_label', f'Base {base_id}')
+            
+            for zone in structure.get('zones', []):
+                zone_id = zone.get('id')
+                zone_label = zone.get('label', f'Zone {zone_id}')
+                
+                try:
+                    # Get current zone data from Modbus
+                    zone_data = zone_service.get_zone_data(base_id, zone_id)
+                    
+                    zones_response.append({
+                        'baseId': base_id,
+                        'baseLabel': base_label,
+                        'zoneId': zone_id,
+                        'zoneLabel': zone_label,
+                        'state': zone_data.state,
+                        'setpoint': zone_data.setpoint,
+                        'temperature': zone_data.temperature,
+                        'relativeHumidity': zone_data.relative_humidity
+                    })
+                    
+                except Exception as e:
+                    _logger.warning(f"Could not read data for zone {base_id}/{zone_id}: {e}")
+                    # Include zone in response but with null values
+                    zones_response.append({
+                        'baseId': base_id,
+                        'baseLabel': base_label,
+                        'zoneId': zone_id,
+                        'zoneLabel': zone_label,
+                        'state': None,
+                        'setpoint': None,
+                        'temperature': None,
+                        'relativeHumidity': None,
+                        'error': f"Could not read zone data: {str(e)}"
+                    })
+        
+        return current_app.response_class(
+            response=json.dumps({
+                'zones': zones_response,
+                'total': len(zones_response)
+            }),
+            status=200,
+            mimetype='application/json'
+        )
+        
+    except Exception as e:
+        _logger.error(f"Error getting all zones: {e}")
+        return current_app.response_class(
+            response=json.dumps(ErrorResponse("Internal server error").to_dict()),
+            status=500,
+            mimetype='application/json'
+        )
 
 
 @zones_bp.route("/zones/<int:base_id>/<int:zone_id>", methods=['POST', 'GET'])
