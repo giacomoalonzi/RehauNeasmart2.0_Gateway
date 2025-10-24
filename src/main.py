@@ -13,10 +13,6 @@ from pymodbus.datastore import (
     ModbusSlaveContext,
 )
 from pymodbus import __version__ as pymodbus_version
-from pymodbus.framer import (
-    ModbusRtuFramer,
-    ModbusSocketFramer,
-)
 from pymodbus.device import ModbusDeviceIdentification
 from pymodbus.server import (
     StartAsyncSerialServer,
@@ -74,7 +70,13 @@ def setup_server_context(datastore_path):
             co=None,
             hr=datablock,
             ir=None,
-            zero_mode=True,
+        ),
+        # Add slave ID 241 as well if needed
+        241: ModbusSlaveContext(
+            di=None,
+            co=None,
+            hr=datablock,
+            ir=None,
         ),
     }
 
@@ -97,8 +99,7 @@ async def run_modbus_server(server_context, server_addr, conn_type):
             context=server_context,
             identity=identity,
             address=server_addr,
-            framer=ModbusSocketFramer,
-            allow_reuse_address=True,
+            framer="socket",
             ignore_missing_slaves=True,
             broadcast_enable=True,
         )
@@ -107,7 +108,7 @@ async def run_modbus_server(server_context, server_addr, conn_type):
             context=server_context,
             identity=identity,
             port=server_addr,
-            framer=ModbusRtuFramer,
+            framer="rtu",
             stopbits=const.NEASMART_SYSBUS_STOP_BITS,
             bytesize=const.NEASMART_SYSBUS_DATA_BITS,
             parity=const.NEASMART_SYSBUS_PARITY,
@@ -427,9 +428,9 @@ if __name__ == "__main__":
     with open(const.ADDON_OPT_PATH) as f:
         config = json.load(f)
         addr = config.get("listen_address", "0.0.0.0")
-        port = config.get("listen_port", "502")
+        port = int(config.get("listen_port", "502"))
         server_type = config.get("server_type", "tcp")
-        slave_id = config.get("slave_id", 240)
+        slave_id = int(config.get("slave_id", 240))
 
     context = setup_server_context(const.DATASTORE_PATH)
 
