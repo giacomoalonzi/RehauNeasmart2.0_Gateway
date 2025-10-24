@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
 import logging
+import asyncio
 from typing import Tuple
 from models.zone_models import ZoneData, ZoneRequest
 import const
 import dpt_9001
+from modbus_monitor import get_monitor
+from modbus_client import get_client
 
 _logger = logging.getLogger(__name__)
 
@@ -54,6 +57,10 @@ class ZoneService:
             ZoneData: Zone data object
         """
         zone_addr = (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+        
+        # Log API read
+        monitor = get_monitor()
+        monitor.log_read(self.slave_id, zone_addr, count=1, source="api")
         
         state = self.context[self.slave_id].getValues(
             const.READ_HR_CODE,
@@ -108,8 +115,13 @@ class ZoneService:
         if request.state is not None:
             if not isinstance(request.state, list):
                 request.state = [request.state]
+            
+            # Log API write
+            monitor = get_monitor()
+            monitor.log_write(self.slave_id, zone_addr, request.state, source="api")
+            
             self.context[self.slave_id].setValues(
-                const.READ_HR_CODE,
+                const.WRITE_HR_CODE,
                 zone_addr,
                 request.state
             )
@@ -121,10 +133,41 @@ class ZoneService:
             if not isinstance(dpt_9001_setpoint, list):
                 dpt_9001_setpoint = [dpt_9001_setpoint]
             
+            # Log API write
+            monitor = get_monitor()
+            monitor.log_write(self.slave_id, zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET, 
+                            dpt_9001_setpoint, source="api")
+            
+            # Write to local server registers
             self.context[self.slave_id].setValues(
-                const.READ_HR_CODE,
+                const.WRITE_HR_CODE,
                 zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET,
                 dpt_9001_setpoint
             )
+            
+            # Write-through to physical Neasmart device
+            write_through_success = False
+            try:
+                client = get_client()
+                success, msg = asyncio.run(
+                    client.write_zone_setpoint(base_id, zone_id, dpt_9001_setpoint[0])
+                )
+                if success:
+                    _logger.info(f"Write-through to physical device successful: {msg}")
+                    write_through_success = True
+                else:
+                    _logger.warning(f"Write-through to physical device failed: {msg}")
+                    # Log the specific error for debugging
+                    _logger.warning(f"Write-through error details: {msg}")
+            except Exception as e:
+                _logger.error(f"Error during write-through to physical device: {e}")
+                # Log the full exception for debugging
+                import traceback
+                _logger.error(f"Full traceback: {traceback.format_exc()}")
+            
+            # If write-through failed, log a warning but continue
+            if not write_through_success:
+                _logger.warning("Write-through to physical device failed. Data saved locally but may not persist on device restart.")
+                _logger.warning("Check Waveshare gateway connection and Neasmart device communication.")
         
         return True, "Zone updated successfully", dpt_9001_setpoint

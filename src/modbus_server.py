@@ -16,6 +16,7 @@ from pymodbus.server import StartAsyncSerialServer, StartAsyncTcpServer
 from sqlitedict import SqliteDict
 
 import const
+from modbus_monitor import get_monitor
 
 _logger = logging.getLogger(__name__)
 
@@ -44,7 +45,13 @@ class LockingPersistentDataBlock(ModbusSequentialDataBlock):
         with self.lock:
             if not isinstance(value, list):
                 value = [value]
+            
+            # Log to monitor (mark as external since direct setValues calls from pymodbus server are external)
+            monitor = get_monitor()
+            monitor.log_write(slave_id=0, address=address, values=value, source="external")
+            
             for k in range(0, len(value)):
+                _logger.info(f"Setting register {address + k} to {value[k]}")
                 self.reg_dict[address + k] = value[k]
             super().setValues(address, value)
 
@@ -60,6 +67,12 @@ class LockingPersistentDataBlock(ModbusSequentialDataBlock):
             list: Register values
         """
         with self.lock:
+            # Log to monitor
+            monitor = get_monitor()
+            monitor.log_read(slave_id=0, address=address, count=count, source="external")
+            
+            # Read from in-memory storage (like old implementation)
+            # Both API and external device use this, and setValues updates both memory and DB
             result = super().getValues(address, count=count)
             return result
 

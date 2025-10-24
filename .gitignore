@@ -6,3 +6,4 @@ venv/
 .env
 old_main.py
 src/__pycache__/
+config
