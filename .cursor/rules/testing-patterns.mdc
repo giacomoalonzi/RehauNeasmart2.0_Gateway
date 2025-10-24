@@ -1,0 +1,205 @@
+---
+description: Testing Patterns for Python Backend
+globs: ["tests/**/*.py", "src/**/*test*.py"]
+alwaysApply: false
+---
+
+# Testing Patterns for Python Backend
+
+## Test Organization
+
+- Use `tests/` directory for all test files
+- Organize tests by module: `tests/unit/`, `tests/integration/`
+- Use descriptive test file names: `test_modbus_manager.py`, `test_zones_api.py`
+- Follow naming convention: `test_*.py` for test files
+
+## Unit Testing
+
+- Test individual functions and methods in isolation
+- Use mocks for external dependencies (Modbus, database)
+- Test both success and failure scenarios
+- Use pytest fixtures for test setup and teardown
+
+```python
+import pytest
+from unittest.mock import Mock, patch
+from src.modbus_manager import ModbusManager
+
+@pytest.fixture
+def mock_modbus_client():
+    return Mock()
+
+def test_read_temperature_success(mock_modbus_client):
+    # Arrange
+    manager = ModbusManager(mock_modbus_client)
+    mock_modbus_client.read_holding_registers.return_value = [2500]
+    
+    # Act
+    result = manager.read_temperature(1)
+    
+    # Assert
+    assert result == 25.0
+    mock_modbus_client.read_holding_registers.assert_called_once()
+```
+
+## Integration Testing
+
+- Test API endpoints with real Flask app
+- Test database operations with test database
+- Test Modbus communication with mock server
+- Use test fixtures for database setup
+
+```python
+import pytest
+from src.main import app
+from src.database import get_database_manager
+
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    with app.test_client() as client:
+        yield client
+
+def test_zones_endpoint(client):
+    response = client.get('/api/v1/zones')
+    assert response.status_code == 200
+    assert 'zones' in response.get_json()
+```
+
+## Mocking Strategies
+
+- Mock external services (Modbus, database)
+- Use `unittest.mock.patch` for function-level mocking
+- Mock at the right level (interface, not implementation)
+- Use dependency injection for easier mocking
+
+```python
+@patch('src.modbus_manager.ModbusTcpClient')
+def test_modbus_connection_failure(mock_client_class):
+    # Arrange
+    mock_client = Mock()
+    mock_client.connect.side_effect = ConnectionException("Connection failed")
+    mock_client_class.return_value = mock_client
+    
+    # Act & Assert
+    with pytest.raises(ConnectionException):
+        ModbusManager().connect()
+```
+
+## Database Testing
+
+- Use in-memory SQLite for testing
+- Create test data fixtures
+- Test database migrations and schema changes
+- Clean up test data after each test
+
+```python
+@pytest.fixture
+def test_db():
+    # Create in-memory test database
+    db_path = ":memory:"
+    db_manager = DatabaseManager(db_path)
+    yield db_manager
+    db_manager.close()
+
+def test_store_temperature_data(test_db):
+    # Test database operations
+    test_db.store_temperature(1, 25.0)
+    result = test_db.get_temperature(1)
+    assert result == 25.0
+```
+
+## API Testing
+
+- Test all HTTP methods (GET, POST, PUT, DELETE)
+- Test request validation and error responses
+- Test authentication and authorization
+- Test rate limiting and CORS
+
+```python
+def test_get_zones_success(client):
+    response = client.get('/api/v1/zones')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'zones' in data
+
+def test_get_zones_invalid_zone_id(client):
+    response = client.get('/api/v1/zones?zone_id=invalid')
+    assert response.status_code == 400
+    assert 'error' in response.get_json()
+```
+
+## Error Testing
+
+- Test exception handling and error responses
+- Test circuit breaker behavior
+- Test timeout scenarios
+- Test invalid input handling
+
+```python
+def test_modbus_timeout():
+    with patch('src.modbus_manager.ModbusTcpClient') as mock_client:
+        mock_client.return_value.read_holding_registers.side_effect = TimeoutException()
+        
+        manager = ModbusManager()
+        result = manager.read_temperature(1)
+        
+        # Should return cached value or default
+        assert result is not None
+```
+
+## Performance Testing
+
+- Test response times for API endpoints
+- Test database query performance
+- Test Modbus communication latency
+- Use pytest-benchmark for performance testing
+
+## Test Configuration
+
+- Use separate test configuration
+- Use environment variables for test settings
+- Mock external dependencies
+- Use test-specific logging configuration
+
+```python
+@pytest.fixture(autouse=True)
+def setup_test_environment():
+    os.environ['NEASMART_DEBUG_MODE'] = 'true'
+    os.environ['NEASMART_DATABASE_PATH'] = ':memory:'
+    yield
+    # Cleanup
+    os.environ.pop('NEASMART_DEBUG_MODE', None)
+```
+
+## Test Data Management
+
+- Use factories for creating test data
+- Use fixtures for common test scenarios
+- Clean up test data after each test
+- Use parameterized tests for multiple scenarios
+
+```python
+@pytest.mark.parametrize("zone_id,temperature,expected", [
+    (1, 25.0, 25.0),
+    (2, 30.0, 30.0),
+    (3, -5.0, -5.0),
+])
+def test_temperature_conversion(zone_id, temperature, expected):
+    result = convert_temperature(temperature)
+    assert result == expected
+```
+
+## Coverage Requirements
+
+- Aim for high test coverage (>80%)
+- Test critical business logic thoroughly
+- Test error conditions and edge cases
+- Use coverage reporting tools
+
+## Continuous Integration
+
+- Run tests automatically on code changes
+- Use different test environments (unit, integration)
+- Test with different Python versions
+- Use test result reporting and notifications

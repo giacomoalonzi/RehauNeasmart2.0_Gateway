@@ -1,0 +1,63 @@
+---
+description: Project Structure & Python Backend Architecture
+globs: ["*.py", "*.json", "requirements.txt", "Dockerfile", "docker-compose.yml"]
+alwaysApply: false
+---
+
+# Python Backend Architecture
+
+## Project Structure
+
+- Follow the established Python package structure: `src/` for main code, `tests/` for testing
+- Keep configuration files in `config/` directory with modular JSON files
+- Use `src/api/` for Flask blueprints and REST endpoints
+- Maintain `docs/` for comprehensive documentation
+- Store data and logs in `data/` and `logs/` directories respectively
+
+## Python Best Practices
+
+- Use type hints throughout the codebase for better maintainability
+- Follow PEP 8 style guidelines with proper imports organization
+- Use dataclasses for configuration objects with validation
+- Implement proper error handling with custom exception classes
+- Use context managers for resource management (database connections, Modbus contexts)
+
+## Flask API Patterns
+
+- Organize endpoints using Flask blueprints in `src/api/` directory
+- Use consistent naming: `zones.py`, `temperature.py`, `health.py`
+- Implement proper request validation and error responses
+- Use Flask-CORS for cross-origin requests
+- Apply rate limiting with Flask-Limiter for API protection
+
+## Modbus Communication
+
+- Centralize Modbus operations in `modbus_manager.py`
+- Implement circuit breaker pattern for fault tolerance
+- Use proper context management for Modbus connections
+- Cache frequently accessed values with fallback mechanisms
+- Handle Modbus exceptions gracefully with retry logic
+
+## Development Workflow
+
+- Use `python -m venv venv` for virtual environment setup
+- Run `pip install -r requirements.txt` for dependency management
+- Use `python -m pytest tests/` for running tests
+- Use `python src/main.py` for development server
+- Use Docker for production deployment with `docker-compose up`
+
+## Code Organization
+
+- Keep related functionality in dedicated modules (API, database, Modbus)
+- Use consistent file naming: `snake_case.py` for Python files
+- Group imports: standard library, third-party, local imports
+- Document complex business logic with docstrings
+- Keep configuration separate from business logic
+
+## Error Handling & Logging
+
+- Use structured logging with JSON format for production
+- Implement comprehensive error handling with custom exceptions
+- Log all API requests and Modbus operations for debugging
+- Use circuit breaker pattern for external service failures
+- Provide meaningful error messages to API consumers

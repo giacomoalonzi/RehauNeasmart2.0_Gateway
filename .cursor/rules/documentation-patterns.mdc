@@ -1,0 +1,266 @@
+---
+description: Documentation Patterns
+globs: ["docs/**/*.md", "*.md", "src/**/*.py"]
+alwaysApply: false
+---
+
+# Documentation Patterns
+
+## Code Documentation
+
+- Use docstrings for all functions, classes, and modules
+- Follow Google docstring format for consistency
+- Include type hints in function signatures
+- Document complex business logic with inline comments
+
+```python
+def read_temperature(zone_id: int) -> float:
+    """
+    Read temperature from a specific zone.
+    
+    Args:
+        zone_id (int): The zone identifier to read from
+        
+    Returns:
+        float: The temperature value in Celsius
+        
+    Raises:
+        ModbusException: If communication with the device fails
+        ValueError: If zone_id is invalid
+        
+    Example:
+        >>> temp = read_temperature(1)
+        >>> print(f"Zone 1 temperature: {temp}°C")
+    """
+    if not isinstance(zone_id, int) or zone_id < 1:
+        raise ValueError("Zone ID must be a positive integer")
+    
+    # Implementation here...
+```
+
+## API Documentation
+
+- Use OpenAPI/Swagger for interactive API documentation
+- Document all endpoints with request/response schemas
+- Include example requests and responses
+- Document error codes and their meanings
+
+```python
+@zones_bp.route('/zones', methods=['GET'])
+def get_zones():
+    """
+    Get all available zones.
+    
+    ---
+    tags:
+      - Zones
+    responses:
+      200:
+        description: List of zones
+        schema:
+          type: object
+          properties:
+            zones:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  label:
+                    type: string
+                  temperature:
+                    type: number
+    """
+    # Implementation here...
+```
+
+## README Documentation
+
+- Keep README files up to date with current functionality
+- Include quick start guides and examples
+- Document configuration options and environment variables
+- Provide troubleshooting sections
+
+```markdown
+# Rehau Neasmart 2.0 Gateway
+
+## Quick Start
+
+### Development Setup
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python src/main.py
+```
+
+### Configuration
+Copy the example configuration and customize:
+```bash
+cp config.example/ config/
+# Edit config/server.json and config/zones.json
+```
+```
+
+## Architecture Documentation
+
+- Document system architecture and component relationships
+- Include data flow diagrams
+- Explain design decisions and trade-offs
+- Document deployment and scaling considerations
+
+```markdown
+## System Architecture
+
+The gateway follows a modular architecture:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   REST API      │    │   Database      │    │   Modbus        │
+│   (Flask)       │◄──►│   Manager       │◄──►│   Manager       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Components
+- **API Layer**: Flask blueprints for REST endpoints
+- **Database**: SQLite with fallback mechanisms
+- **Modbus**: Circuit breaker pattern for reliability
+```
+
+## Configuration Documentation
+
+- Document all configuration options
+- Provide examples for different scenarios
+- Explain environment variables and their effects
+- Include validation rules and constraints
+
+```markdown
+## Configuration Options
+
+### Server Configuration (`config/server.json`)
+```json
+{
+  "server": {
+    "type": "tcp",
+    "address": "192.168.1.100",
+    "port": 502
+  }
+}
+```
+
+### Environment Variables
+- `NEASMART_DEBUG_MODE`: Enable debug logging
+- `NEASMART_DATABASE_PATH`: Database file location
+- `NEASMART_LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
+```
+
+## API Documentation
+
+- Document all REST endpoints
+- Include request/response examples
+- Document authentication and authorization
+- Provide SDK examples for different languages
+
+```markdown
+## API Endpoints
+
+### Get Zones
+```http
+GET /api/v1/zones
+```
+
+**Response:**
+```json
+{
+  "zones": [
+    {
+      "id": 1,
+      "label": "Living Room",
+      "temperature": 22.5
+    }
+  ]
+}
+```
+```
+
+## Troubleshooting Documentation
+
+- Document common issues and solutions
+- Include diagnostic commands and tools
+- Provide log analysis guidance
+- Document recovery procedures
+
+```markdown
+## Troubleshooting
+
+### Common Issues
+
+#### Gateway won't start
+```bash
+# Check configuration
+python -c "from src.config import load_config; print('Config OK')"
+
+# Check Modbus connection
+telnet 192.168.1.100 502
+```
+
+#### No zone data
+- Verify `structures` array in configuration
+- Check Modbus slave_id (usually 240 or 241)
+- Ensure network connectivity to device
+```
+
+## Development Documentation
+
+- Document development setup and workflow
+- Include testing guidelines
+- Document code style and conventions
+- Provide contribution guidelines
+
+```markdown
+## Development
+
+### Setup
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests
+python -m pytest tests/
+
+# Start development server
+python src/main.py
+```
+
+### Code Style
+- Follow PEP 8 guidelines
+- Use type hints for all functions
+- Write comprehensive tests
+- Document all public APIs
+```
+
+## Deployment Documentation
+
+- Document production deployment procedures
+- Include Docker and containerization guides
+- Document monitoring and logging setup
+- Provide maintenance procedures
+
+```markdown
+## Production Deployment
+
+### Docker Deployment
+```bash
+# Build and run
+docker-compose up -d
+
+# Check status
+docker-compose ps
+```
+
+### Monitoring
+- Health endpoint: `/health`
+- Metrics endpoint: `/metrics`
+- Log files: `logs/gateway.log`
+```

@@ -1,0 +1,88 @@
+---
+description: Flask API Development Patterns
+globs: ["src/api/*.py", "src/main.py"]
+alwaysApply: false
+---
+
+# Flask API Development Patterns
+
+## Blueprint Organization
+
+- Create one blueprint per domain (zones, temperature, health, etc.)
+- Use descriptive names: `zones_bp`, `temperature_bp`, `health_bp`
+- Register blueprints in `main.py` with proper URL prefixes
+- Keep blueprint logic focused on HTTP concerns only
+
+## Endpoint Design
+
+- Use RESTful conventions: GET for reads, POST for writes
+- Implement proper HTTP status codes (200, 201, 400, 404, 500)
+- Use consistent URL patterns: `/api/v1/zones`, `/api/v1/temperature`
+- Group related endpoints under the same blueprint
+
+## Request/Response Patterns
+
+```python
+# Request validation
+@zones_bp.route('/zones', methods=['GET'])
+def get_zones():
+    try:
+        # Validate query parameters
+        zone_id = request.args.get('zone_id', type=int)
+        # Business logic
+        result = get_zones_data(zone_id)
+        return jsonify(result), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+```
+
+## Error Handling
+
+- Use try-catch blocks for all endpoint functions
+- Return consistent error response format
+- Log errors with appropriate levels (ERROR, WARNING)
+- Use custom exception classes for business logic errors
+- Provide meaningful error messages to clients
+
+## Input Validation
+
+- Validate all input parameters (query, body, path)
+- Use type hints for parameter validation
+- Sanitize user input to prevent injection attacks
+- Return 400 Bad Request for invalid input
+- Use Flask request object methods: `get_json()`, `args.get()`
+
+## Response Formatting
+
+- Use consistent JSON response structure
+- Include metadata when appropriate (timestamps, pagination)
+- Use proper HTTP headers (Content-Type: application/json)
+- Implement response caching where appropriate
+- Use Flask's `jsonify()` for automatic JSON serialization
+
+## Security Considerations
+
+- Implement rate limiting on all endpoints
+- Use CORS properly for cross-origin requests
+- Validate API keys or JWT tokens if authentication is enabled
+- Sanitize all user inputs
+- Log security-related events
+
+## Performance Optimization
+
+- Use database connection pooling
+- Implement response caching for frequently accessed data
+- Use async operations where appropriate
+- Monitor endpoint performance with logging
+- Implement circuit breaker pattern for external dependencies
+
+## Documentation
+
+- Use docstrings for all endpoint functions
+- Document request/response schemas
+- Include example requests and responses
+- Use OpenAPI/Swagger for interactive documentation
+- Keep API documentation up to date with code changes
