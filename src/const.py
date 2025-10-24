@@ -65,7 +65,6 @@ def get_FILTERED_OUTSIDE_TEMP_REG():
 SQLITEDICT_REGS_TABLE = "holding_registers"
 REGS_STARTING_ADDR = 0
 DATASTORE_PATH = "./data/registers.db"
-ADDON_OPT_PATH = "./data/options.json"
 
 
 ## new constants

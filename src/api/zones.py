@@ -19,23 +19,20 @@ zones_bp = Blueprint('zones', __name__)
 @zones_bp.route("/zones", methods=['GET'])
 def get_all_zones():
     """
-    Get all configured zones from options.json with their current values.
+    Get all configured zones from config system with their current values.
     
     Returns:
         JSON response with all zones and their current state, temperature, setpoint, and humidity
     """
     try:
-        # Load options.json
-        options_path = "./data/options.json"
-        if not os.path.exists(options_path):
+        # Get configuration from app context
+        server_config = current_app.config.get('SERVER_CONFIG')
+        if not server_config or not server_config.structures:
             return current_app.response_class(
-                response=json.dumps(ErrorResponse("Configuration file not found").to_dict()),
+                response=json.dumps(ErrorResponse("Configuration not found").to_dict()),
                 status=404,
                 mimetype='application/json'
             )
-        
-        with open(options_path, 'r') as f:
-            options_data = json.load(f)
         
         # Get services from app context
         context = current_app.config['MODBUS_CONTEXT']
@@ -45,7 +42,7 @@ def get_all_zones():
         # Build response with all zones
         zones_response = []
         
-        for structure in options_data.get('structures', []):
+        for structure in server_config.structures:
             base_id = structure.get('base_id')
             base_label = structure.get('base_label', f'Base {base_id}')
             

@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from typing import Union
+from typing import Union, Dict, Any, List
 
 _logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ class ServerConfig:
     server_type: str = "tcp"
     slave_id: int = 240
     server_port: int = 5001
+    structures: List[Dict[str, Any]] = None
     
     def __post_init__(self):
         """Validate configuration after initialization."""
@@ -27,55 +28,69 @@ class ServerConfig:
             raise ValueError(f"Invalid slave_id: {self.slave_id}")
         if self.listen_port < 1 or self.listen_port > 65535:
             raise ValueError(f"Invalid listen_port: {self.listen_port}")
+        if self.structures is None:
+            self.structures = []
 
 
 class ConfigManager:
-    """Configuration manager for loading and managing application settings."""
+    """Configuration manager for loading and managing application settings from config/ directory."""
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_dir: str = "./config"):
         """
         Initialize configuration manager.
         
         Args:
-            config_path (str): Path to configuration file
+            config_dir (str): Path to configuration directory
         """
-        self.config_path = config_path or "./data/options.json"
+        self.config_dir = config_dir
         self._config = None
+        self._zones_config = None
+    
+    def _load_json_file(self, file_path: str) -> Dict[str, Any]:
+        """Load and parse a JSON configuration file."""
+        try:
+            with open(file_path, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError) as e:
+            _logger.warning(f"Error loading {file_path}: {e}")
+            return {}
     
     def load_config(self) -> ServerConfig:
         """
-        Load configuration from JSON file.
+        Load configuration from config/ directory.
         
         Returns:
             ServerConfig: Loaded configuration object
         """
-        if not os.path.exists(self.config_path):
-            _logger.warning(f"Configuration file not found at {self.config_path}, using defaults")
-            return ServerConfig()
-        
         try:
-            with open(self.config_path, 'r') as f:
-                config_data = json.load(f)
+            # Load server configuration
+            server_config_path = os.path.join(self.config_dir, "server.json")
+            server_data = self._load_json_file(server_config_path)
             
-            # Convert string values to appropriate types
-            config_data['listen_port'] = int(config_data.get('listen_port', 502))
-            config_data['slave_id'] = int(config_data.get('slave_id', 240))
-            config_data['server_port'] = int(config_data.get('server_port', 5001))
+            # Load zones configuration
+            zones_config_path = os.path.join(self.config_dir, "zones.json")
+            zones_data = self._load_json_file(zones_config_path)
             
-            # Only pass expected fields to ServerConfig
-            server_config_data = {
-                'listen_address': config_data.get('listen_address', '0.0.0.0'),
-                'listen_port': config_data.get('listen_port', 502),
-                'server_type': config_data.get('server_type', 'tcp'),
-                'slave_id': config_data.get('slave_id', 240),
-                'server_port': config_data.get('server_port', 5001)
+            # Extract server settings
+            server_info = server_data.get('server', {})
+            modbus_info = server_data.get('modbus', {})
+            
+            # Build configuration data
+            config_data = {
+                'listen_address': server_info.get('address', '0.0.0.0'),
+                'listen_port': server_info.get('port', 502),
+                'server_type': server_info.get('type', 'tcp'),
+                'slave_id': modbus_info.get('slave_id', 240),
+                'server_port': server_info.get('server_port', 5001),
+                'structures': zones_data.get('structures', [])
             }
             
-            self._config = ServerConfig(**server_config_data)
-            _logger.info(f"Configuration loaded from {self.config_path}")
+            self._config = ServerConfig(**config_data)
+            self._zones_config = zones_data
+            _logger.info(f"Configuration loaded from {self.config_dir}")
             return self._config
             
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
+        except Exception as e:
             _logger.error(f"Error loading configuration: {e}")
             _logger.info("Using default configuration")
             return ServerConfig()
@@ -91,26 +106,58 @@ class ConfigManager:
             self._config = self.load_config()
         return self._config
     
+    def get_zones_config(self) -> Dict[str, Any]:
+        """
+        Get zones configuration.
+        
+        Returns:
+            Dict[str, Any]: Zones configuration
+        """
+        if self._zones_config is None:
+            self.load_config()
+        return self._zones_config or {}
+    
     def save_config(self, config: ServerConfig) -> None:
         """
-        Save configuration to JSON file.
+        Save configuration to config/ directory.
         
         Args:
             config (ServerConfig): Configuration to save
         """
         try:
-            config_dict = {
-                'listen_address': config.listen_address,
-                'listen_port': str(config.listen_port),
-                'server_type': config.server_type,
-                'slave_id': str(config.slave_id),
-                'server_port': str(config.server_port)
+            # Save server configuration
+            server_config_path = os.path.join(self.config_dir, "server.json")
+            server_data = self._load_json_file(server_config_path)
+            
+            # Update server settings
+            if 'server' not in server_data:
+                server_data['server'] = {}
+            
+            server_data['server'].update({
+                'address': config.listen_address,
+                'port': config.listen_port,
+                'type': config.server_type,
+                'server_port': config.server_port
+            })
+            
+            if 'modbus' not in server_data:
+                server_data['modbus'] = {}
+            
+            server_data['modbus']['slave_id'] = config.slave_id
+            
+            with open(server_config_path, 'w') as f:
+                json.dump(server_data, f, indent=2)
+            
+            # Save zones configuration
+            zones_config_path = os.path.join(self.config_dir, "zones.json")
+            zones_data = {
+                'structures': config.structures
             }
             
-            with open(self.config_path, 'w') as f:
-                json.dump(config_dict, f, indent=2)
+            with open(zones_config_path, 'w') as f:
+                json.dump(zones_data, f, indent=2)
             
-            _logger.info(f"Configuration saved to {self.config_path}")
+            _logger.info(f"Configuration saved to {self.config_dir}")
             
         except Exception as e:
             _logger.error(f"Error saving configuration: {e}")

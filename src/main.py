@@ -33,7 +33,7 @@ def main():
     Main function to initialize and start the gateway application.
     
     This function:
-    1. Loads configuration from options.json
+    1. Loads configuration from config/ directory
     2. Creates and configures the Flask application
     3. Starts the Flask REST API server in a separate thread
     4. Starts the Modbus server (TCP or Serial) in the main event loop
