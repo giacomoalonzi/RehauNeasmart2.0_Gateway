@@ -56,7 +56,7 @@ class ZoneService:
         Returns:
             ZoneData: Zone data object
         """
-        zone_addr = (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
         
         # Log API read
         monitor = get_monitor()
@@ -109,7 +109,7 @@ class ZoneService:
         Returns:
             Tuple[bool, str, any]: (success, message, dpt_9001_setpoint)
         """
-        zone_addr = (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
         dpt_9001_setpoint = None
         
         if request.state is not None:

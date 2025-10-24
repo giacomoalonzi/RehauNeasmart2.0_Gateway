@@ -32,7 +32,7 @@ class TemperatureService:
         outside_temperature = dpt_9001.unpack_dpt9001(
             self.context[self.slave_id].getValues(
                 const.READ_HR_CODE,
-                const.OUTSIDE_TEMP_REG,
+                const.OUTSIDE_TEMPERATURE_ADDR,
                 count=1
             )[0]
         )
@@ -40,7 +40,7 @@ class TemperatureService:
         filtered_outside_temperature = dpt_9001.unpack_dpt9001(
             self.context[self.slave_id].getValues(
                 const.READ_HR_CODE,
-                const.FILTERED_OUTSIDE_TEMP_REG,
+                const.FILTERED_OUTSIDE_TEMPERATURE_ADDR,
                 count=1
             )[0]
         )

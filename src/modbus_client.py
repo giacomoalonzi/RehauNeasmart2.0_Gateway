@@ -152,7 +152,7 @@ class NeasmartModbusClient:
             return False, "Gateway write-through is disabled due to configuration or consecutive errors"
         
         # Calculate register address
-        zone_addr = (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
         setpoint_addr = zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET
         
         _logger.info(f"Writing setpoint to Neasmart device: addr={setpoint_addr}, value={dpt_9001_value}")
@@ -236,7 +236,7 @@ class NeasmartModbusClient:
             Tuple[bool, str]: (success, message)
         """
         # Calculate register address
-        zone_addr = (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
         
         _logger.info(f"Writing state to Neasmart device: addr={zone_addr}, value={state}")
         
@@ -283,7 +283,7 @@ class NeasmartModbusClient:
             Tuple[bool, Optional[int], str]: (success, dpt_9001_value, message)
         """
         # Calculate register address
-        zone_addr = (base_id - 1) * const.NEASMART_BASE_SLAVE_ADDR + zone_id * const.BASE_ZONE_ID
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
         setpoint_addr = zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET
         
         # Ensure connected
