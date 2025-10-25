@@ -86,7 +86,47 @@ def mode():
 
 @legacy_operation_bp.route("/state", methods=['POST', 'GET'])
 def state():
-    """Legacy state endpoint returning human-readable payloads."""
+    """
+    Legacy state endpoint returning human-readable payloads.
+    
+    ---
+    get:
+      summary: Get global operation state
+      tags:
+        - Operation
+      description: Retrieves the current global operation state of the system (e.g., "normal", "standby").
+      responses:
+        '200':
+          description: Current operation state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationStateResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      summary: Set global operation state
+      tags:
+        - Operation
+      description: Sets a new global operation state for the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationStateUpdateRequest'
+      responses:
+        '200':
+          description: State update accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationStateUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    """
     service = _get_service()
 
     if request.method == 'GET':

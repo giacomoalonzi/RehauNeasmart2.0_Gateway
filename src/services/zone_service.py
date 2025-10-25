@@ -97,6 +97,39 @@ class ZoneService:
             relative_humidity=relative_humidity
         )
     
+    def get_zone_labels(self, base_id: int, zone_id: int) -> Tuple[str, str]:
+        """
+        Get zone and base labels from configuration.
+        
+        Args:
+            base_id (int): Base ID
+            zone_id (int): Zone ID
+            
+        Returns:
+            Tuple[str, str]: (base_label, zone_label)
+        """
+        from config import config_manager
+        
+        # Get zones configuration
+        zones_config = config_manager.get_zones_config()
+        structures = zones_config.get('structures', [])
+        
+        # Find the structure and zone
+        for structure in structures:
+            if structure.get('base_id') == base_id:
+                base_label = structure.get('base_label', f'Base {base_id}')
+                
+                for zone in structure.get('zones', []):
+                    if zone.get('id') == zone_id:
+                        zone_label = zone.get('label', f'Zone {zone_id}')
+                        return base_label, zone_label
+                
+                # If zone not found in structure, return default
+                return base_label, f'Zone {zone_id}'
+        
+        # If structure not found, return defaults
+        return f'Base {base_id}', f'Zone {zone_id}'
+
     def update_zone_data(self, base_id: int, zone_id: int, request: ZoneRequest) -> Tuple[bool, str, any]:
         """
         Update zone data in Modbus registers.

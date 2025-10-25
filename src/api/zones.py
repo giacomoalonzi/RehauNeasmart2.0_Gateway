@@ -21,8 +21,21 @@ def get_all_zones():
     """
     Get all configured zones from config system with their current values.
     
-    Returns:
-        JSON response with all zones and their current state, temperature, setpoint, and humidity
+    ---
+    get:
+      summary: List all configured and active zones
+      tags:
+        - Zones
+      description: Retrieves a list of zones that are defined in the configuration file and are currently active.
+      responses:
+        '200':
+          description: A list of configured zones and their status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZonesListResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
     """
     try:
         # Get configuration from app context
@@ -103,6 +116,72 @@ def zone(base_id=None, zone_id=None):
     """
     Zone endpoint for getting and updating zone data.
     
+    ---
+    get:
+      summary: Get specific zone information
+      tags:
+        - Zones
+      description: Retrieves the current state, temperature, setpoint, and other details for a single configured zone.
+      parameters:
+        - name: base_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 4
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+      responses:
+        '200':
+          description: Detailed information for the specified zone.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      summary: Update zone state or setpoint
+      tags:
+        - Zones
+      description: Update the state and/or setpoint for a specific zone.
+      parameters:
+        - name: base_id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: zone_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZoneUpdateRequest'
+      responses:
+        '200':
+          description: Confirmation of the zone update.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZoneUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    
     Args:
         base_id (int): Base ID (1-4)
         zone_id (int): Zone ID (1-12)
@@ -124,8 +203,19 @@ def zone(base_id=None, zone_id=None):
     if request.method == 'GET':
         try:
             zone_data = zone_service.get_zone_data(base_id, zone_id)
+            base_label, zone_label = zone_service.get_zone_labels(base_id, zone_id)
+            
+            # Build response with zone data and labels
+            response_data = zone_data.to_dict(readable=True)
+            response_data.update({
+                'baseId': base_id,
+                'baseLabel': base_label,
+                'zoneId': zone_id,
+                'zoneLabel': zone_label
+            })
+            
             return current_app.response_class(
-                response=json.dumps(zone_data.to_dict(readable=True)),
+                response=json.dumps(response_data),
                 status=200,
                 mimetype='application/json'
             )

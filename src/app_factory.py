@@ -2,9 +2,11 @@
 
 import logging
 import threading
-from flask import Flask
+from flask import Flask, jsonify
+from flask_swagger_ui import get_swaggerui_blueprint
 from config import config_manager
 from modbus_server import setup_server_context
+from openapi_generator import generate_openapi_yaml, get_openapi_dict
 import const
 
 _logger = logging.getLogger(__name__)
@@ -37,6 +39,40 @@ def create_app(config=None):
     # Register blueprints
     from api import register_blueprints
     register_blueprints(app)
+    
+    # Register Swagger UI
+    swaggerui_blueprint = get_swaggerui_blueprint(
+        '/api/docs',
+        '/api/openapi.yaml',
+        config={
+            'app_name': "Rehau Neasmart 2.0 Gateway API",
+            'supportedSubmitMethods': ['get', 'post', 'put', 'delete'],
+            'validatorUrl': None
+        }
+    )
+    app.register_blueprint(swaggerui_blueprint)
+    
+    # Add OpenAPI YAML endpoint
+    @app.route('/api/openapi.yaml')
+    def openapi_yaml():
+        """Serve OpenAPI specification in YAML format."""
+        try:
+            yaml_content = generate_openapi_yaml(app)
+            return yaml_content, 200, {'Content-Type': 'application/x-yaml'}
+        except Exception as e:
+            _logger.error(f"Error generating OpenAPI YAML: {e}")
+            return jsonify({'error': 'Failed to generate OpenAPI specification'}), 500
+    
+    # Add OpenAPI JSON endpoint
+    @app.route('/api/openapi.json')
+    def openapi_json():
+        """Serve OpenAPI specification in JSON format."""
+        try:
+            spec_dict = get_openapi_dict(app)
+            return jsonify(spec_dict)
+        except Exception as e:
+            _logger.error(f"Error generating OpenAPI JSON: {e}")
+            return jsonify({'error': 'Failed to generate OpenAPI specification'}), 500
     
     _logger.info("Flask application created and configured")
     return app

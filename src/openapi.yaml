@@ -191,6 +191,22 @@ components:
           $ref: '#/components/schemas/BaseInfo'
         zone:
           $ref: '#/components/schemas/ZoneInfo'
+        baseId:
+          type: integer
+          example: 1
+          description: "Base ID for the zone"
+        baseLabel:
+          type: string
+          example: "First Floor"
+          description: "Human-readable label for the base"
+        zoneId:
+          type: integer
+          example: 1
+          description: "Zone ID within the base"
+        zoneLabel:
+          type: string
+          example: "Living Room"
+          description: "Human-readable label for the zone"
         state:
           $ref: '#/components/schemas/OperationState'
         temperature:
