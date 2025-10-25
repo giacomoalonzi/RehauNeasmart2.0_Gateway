@@ -18,9 +18,12 @@ class OperationMode:
         return {'mode': value}
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Union[int, str]]) -> 'OperationMode':
-        """Create OperationMode from dictionary allowing string or int."""
+    def from_dict(cls, data: Dict[str, str]) -> 'OperationMode':
+        """Create OperationMode from dictionary with string mode."""
         value = data.get('mode')
+        # API should only accept strings, not integers
+        if isinstance(value, int):
+            raise ValueError("API only accepts string modes, not integers")
         normalized = state_converter.name_to_mode(value)
         return cls(mode=normalized)
     
@@ -34,7 +37,8 @@ class OperationMode:
         if not self.mode:
             return False, "missing mode key in payload"
         
-        if not isinstance(self.mode, int) or self.mode == 0 or self.mode > 5:
+        # Mode should be an integer (converted from string in from_dict)
+        if not isinstance(self.mode, int) or self.mode < 0 or self.mode > 5:
             return False, "invalid mode"
         
         return True, ""
@@ -52,9 +56,12 @@ class OperationState:
         return {'state': value}
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Union[int, str]]) -> 'OperationState':
-        """Create OperationState from dictionary allowing string or int."""
+    def from_dict(cls, data: Dict[str, str]) -> 'OperationState':
+        """Create OperationState from dictionary with string state."""
         value = data.get('state')
+        # API should only accept strings, not integers
+        if isinstance(value, int):
+            raise ValueError("API only accepts string states, not integers")
         normalized = state_converter.name_to_state(value)
         return cls(state=normalized)
     
@@ -68,7 +75,8 @@ class OperationState:
         if not self.state:
             return False, "missing state key in payload"
         
-        if not isinstance(self.state, int) or self.state == 0 or self.state > 6:
+        # State should be an integer (converted from string in from_dict)
+        if not isinstance(self.state, int) or self.state < 0 or self.state > 6:
             return False, "invalid state"
         
         return True, ""

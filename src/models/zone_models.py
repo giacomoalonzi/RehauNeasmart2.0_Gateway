@@ -35,10 +35,13 @@ class ZoneRequest:
     
     @classmethod
     def from_dict(cls, data: dict) -> 'ZoneRequest':
-        """Create ZoneRequest from dictionary."""
+        """Create ZoneRequest from dictionary with string state."""
         state_value = data.get('state')
         if state_value is not None:
-            # Convert string state to integer if needed
+            # API should only accept strings, not integers
+            if isinstance(state_value, int):
+                raise ValueError("API only accepts string states, not integers")
+            # Convert string state to integer for internal use
             state_value = state_converter.name_to_zone_state(state_value)
         return cls(
             state=state_value,
@@ -56,7 +59,8 @@ class ZoneRequest:
             return False, "one of state or setpoint need to be specified"
         
         if self.state is not None:
-            if not isinstance(self.state, int) or self.state == 0 or self.state > 6:
+            # State should be an integer (converted from string in from_dict)
+            if not isinstance(self.state, int) or self.state < 0 or self.state > 6:
                 return False, "invalid state"
         
         if self.setpoint is not None:

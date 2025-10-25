@@ -17,7 +17,7 @@ from marshmallow import Schema, fields
 
 class OperationStateSchema(Schema):
     """Schema for operation state enum."""
-    state = fields.Str(enum=['normal', 'reduced', 'standby', 'scheduled', 'party', 'holiday'])
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'])
 
 
 class BaseInfoSchema(Schema):
@@ -61,7 +61,7 @@ class ZonesListResponseSchema(Schema):
 
 class ZoneUpdateRequestSchema(Schema):
     """Schema for zone update request."""
-    state = fields.Str(enum=['normal', 'reduced', 'standby', 'scheduled', 'party', 'holiday'], description="Zone operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Zone operation state")
     setpoint = fields.Float(description="New temperature setpoint. Ignored if state is set to 'off'.", example=22.5)
 
 
@@ -74,18 +74,18 @@ class ZoneUpdateResponseSchema(Schema):
 
 class OperationStateResponseSchema(Schema):
     """Schema for operation state response."""
-    state = fields.Str(enum=['normal', 'reduced', 'standby', 'scheduled', 'party', 'holiday'], description="Current operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Current operation state")
 
 
 class OperationStateUpdateRequestSchema(Schema):
     """Schema for operation state update request."""
-    state = fields.Str(enum=['normal', 'reduced', 'standby', 'scheduled', 'party', 'holiday'], required=True, description="Operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], required=True, description="Operation state")
 
 
 class OperationStateUpdateResponseSchema(Schema):
     """Schema for operation state update response."""
     status = fields.Str(example='success')
-    state = fields.Str(enum=['normal', 'reduced', 'standby', 'scheduled', 'party', 'holiday'], description="Updated operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Updated operation state")
 
 
 class DatabaseHealthSchema(Schema):

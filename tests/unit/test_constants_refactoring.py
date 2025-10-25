@@ -52,26 +52,26 @@ class TestConstantsRefactoring(unittest.TestCase):
     def test_state_mapping_constants(self):
         """Test state mapping constants."""
         # Test state mapping
-        self.assertEqual(const.STATE_MAPPING[0], "off")
-        self.assertEqual(const.STATE_MAPPING[1], "normal")
-        self.assertEqual(const.STATE_MAPPING[2], "reduced")
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[0], "off")
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[1], "presence")
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[2], "away")
         
         # Test reverse mapping
-        self.assertEqual(const.STATE_MAPPING_REVERSE["off"], 0)
-        self.assertEqual(const.STATE_MAPPING_REVERSE["normal"], 1)
-        self.assertEqual(const.STATE_MAPPING_REVERSE["reduced"], 2)
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["off"], 0)
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["presence"], 1)
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["away"], 2)
     
     def test_mode_mapping_constants(self):
         """Test mode mapping constants."""
         # Test mode mapping
-        self.assertEqual(const.MODE_MAPPING[0], "off")
-        self.assertEqual(const.MODE_MAPPING[1], "auto")
-        self.assertEqual(const.MODE_MAPPING[2], "heating")
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[0], "off")
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[1], "auto")
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[2], "heating")
         
         # Test reverse mapping
-        self.assertEqual(const.MODE_MAPPING_REVERSE["off"], 0)
-        self.assertEqual(const.MODE_MAPPING_REVERSE["auto"], 1)
-        self.assertEqual(const.MODE_MAPPING_REVERSE["heating"], 2)
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["off"], 0)
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["auto"], 1)
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["heating"], 2)
     
     def test_zone_address_calculation(self):
         """Test zone address calculation with new constants."""

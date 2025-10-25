@@ -94,7 +94,7 @@ def state():
       summary: Get global operation state
       tags:
         - Operation
-      description: Retrieves the current global operation state of the system (e.g., "normal", "standby").
+      description: Retrieves the current global operation state of the system (e.g., "presence", "standby").
       responses:
         '200':
           description: Current operation state.

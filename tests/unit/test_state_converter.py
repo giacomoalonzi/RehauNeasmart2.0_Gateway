@@ -26,7 +26,7 @@ def test_name_to_mode_invalid():
 
 
 def test_state_to_name_and_back():
-    assert state_converter.state_to_name(1) == "normal"
+    assert state_converter.state_to_name(1) == "presence"
     assert state_converter.name_to_state("standby") == 3
 
 

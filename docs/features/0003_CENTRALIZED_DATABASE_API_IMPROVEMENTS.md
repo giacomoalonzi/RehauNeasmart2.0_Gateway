@@ -53,8 +53,8 @@ The current system has:
 ### Current State Mappings
 **Operation States** (from `src/const.py`):
 - 0: "off"
-- 1: "normal"
-- 2: "reduced"
+- 1: "presence"
+- 2: "away"
 - 3: "standby"
 - 4: "scheduled"
 - 5: "party"
@@ -139,8 +139,8 @@ The current system has:
    - `registers_to_mixed_group(registers: List[int], group_id: int) -> MixedGroupData` - Convert to MixedGroupData
 
 2. **Create StateConverter class** - Bidirectional state conversion:
-   - `operation_state_to_string(state: int) -> str` - Convert operation state int to string (e.g., 1 → "normal")
-   - `string_to_operation_state(state: str) -> int` - Convert string to operation state int (e.g., "normal" → 1)
+   - `operation_state_to_string(state: int) -> str` - Convert operation state int to string (e.g., 1 → "presence")
+   - `string_to_operation_state(state: str) -> int` - Convert string to operation state int (e.g., "presence" → 1)
    - `operation_mode_to_string(mode: int) -> str` - Convert operation mode int to string (e.g., 2 → "heating")
    - `string_to_operation_mode(mode: str) -> int` - Convert string to operation mode int (e.g., "heating" → 2)
    - `zone_state_to_string(state: int) -> str` - Convert zone state to string
@@ -223,7 +223,7 @@ The current system has:
      {
        "base": {"id": 1, "label": "First Floor"},
        "zone": {"id": 1, "label": "Living Room"},
-       "state": "normal",
+       "state": "presence",
        "temperature": {"value": 21.5, "unit": "°C"},
        "setpoint": {"value": 22.0, "unit": "°C"},
        "relativeHumidity": 45,
@@ -233,7 +233,7 @@ The current system has:
    - **POST Request** - Accept both state strings and integers:
      ```json
      {
-       "state": "normal",  // or integer 1
+       "state": "presence",  // or integer 1
        "setpoint": 22.5
      }
      ```
@@ -243,7 +243,7 @@ The current system has:
        "base": {"id": 1, "label": "First Floor"},
        "zone": {"id": 1, "label": "Living Room"},
        "updated": {
-         "state": "normal",
+         "state": "presence",
          "setpoint": 22.5
        }
      }
@@ -393,8 +393,8 @@ Field transformations for API requests:
 
 **Operation States** (for API responses):
 - Integer 0 → String "off"
-- Integer 1 → String "normal"
-- Integer 2 → String "reduced"
+- Integer 1 → String "presence"
+- Integer 2 → String "away"
 - Integer 3 → String "standby"
 - Integer 4 → String "scheduled"
 - Integer 5 → String "party"

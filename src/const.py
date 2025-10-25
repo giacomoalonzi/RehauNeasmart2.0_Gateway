@@ -142,20 +142,8 @@ SQLITEDICT_REGS_TABLE = "holding_registers"  # Table name in local SQLite DB
 REGS_STARTING_ADDR = 0                        # Base register address for SQLite mapping
 DATASTORE_PATH = "./data/registers.db"        # Path to local DB for register storage
 
-# API state mapping (for frontend/backend logic)
-STATE_MAPPING = {
-    0: "off",
-    1: "normal",
-    2: "reduced",
-    3: "standby",
-    4: "scheduled",
-    5: "party",
-    6: "holiday"
-}
-STATE_MAPPING_REVERSE = {v: k for k, v in STATE_MAPPING.items()}
-
 # Zone-specific state mapping (more intuitive for zones)
-ZONE_STATE_MAPPING = {
+GLOBAL_OP_STATUS_MAPPING = {
     0: "off",
     1: "presence",      # Zone is active and occupied
     2: "away",          # Zone is in energy-saving mode
@@ -164,9 +152,9 @@ ZONE_STATE_MAPPING = {
     5: "party",         # Zone is in party mode
     6: "holiday"        # Zone is in long-term away mode
 }
-ZONE_STATE_MAPPING_REVERSE = {v: k for k, v in ZONE_STATE_MAPPING.items()}
+GLOBAL_OP_STATUS_MAPPING_REVERSE = {v: k for k, v in GLOBAL_OP_STATUS_MAPPING.items()}
 
-MODE_MAPPING = {
+GLOBAL_OP_MODE_MAPPING = {
     0: "off",
     1: "auto",
     2: "heating",
@@ -174,4 +162,4 @@ MODE_MAPPING = {
     4: "manual heating",
     5: "manual cooling"
 }
-MODE_MAPPING_REVERSE = {v: k for k, v in MODE_MAPPING.items()}
+GLOBAL_OP_MODE_MAPPING_REVERSE = {v: k for k, v in GLOBAL_OP_MODE_MAPPING.items()}

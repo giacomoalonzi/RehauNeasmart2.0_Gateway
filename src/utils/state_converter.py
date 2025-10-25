@@ -20,7 +20,7 @@ def mode_to_name(mode: int) -> str:
     if not isinstance(mode, int):
         raise ValueError("operation mode must be an integer")
     try:
-        return const.MODE_MAPPING[mode]
+        return const.GLOBAL_OP_MODE_MAPPING[mode]
     except KeyError as exc:
         raise ValueError(f"unknown operation mode '{mode}'") from exc
 
@@ -33,7 +33,7 @@ def name_to_mode(name: Union[str, int]) -> int:
         raise ValueError("operation mode must be provided as string or integer")
     normalized = _normalize_key(name)
     try:
-        return const.MODE_MAPPING_REVERSE[normalized]
+        return const.GLOBAL_OP_MODE_MAPPING_REVERSE[normalized]
     except KeyError as exc:
         raise ValueError(f"unknown operation mode '{name}'") from exc
 
@@ -43,7 +43,7 @@ def state_to_name(state: int) -> str:
     if not isinstance(state, int):
         raise ValueError("operation state must be an integer")
     try:
-        return const.STATE_MAPPING[state]
+        return const.GLOBAL_OP_STATUS_MAPPING[state]
     except KeyError as exc:
         raise ValueError(f"unknown operation state '{state}'") from exc
 
@@ -56,7 +56,7 @@ def name_to_state(name: Union[str, int]) -> int:
         raise ValueError("operation state must be provided as string or integer")
     normalized = _normalize_key(name)
     try:
-        return const.STATE_MAPPING_REVERSE[normalized]
+        return const.GLOBAL_OP_STATUS_MAPPING_REVERSE[normalized]
     except KeyError as exc:
         raise ValueError(f"unknown operation state '{name}'") from exc
 
@@ -66,7 +66,7 @@ def zone_state_to_name(state: int) -> str:
     if not isinstance(state, int):
         raise ValueError("zone state must be an integer")
     try:
-        return const.ZONE_STATE_MAPPING[state]
+        return const.GLOBAL_OP_STATUS_MAPPING[state]
     except KeyError as exc:
         raise ValueError(f"unknown zone state '{state}'") from exc
 
@@ -79,7 +79,7 @@ def name_to_zone_state(name: Union[str, int]) -> int:
         raise ValueError("zone state must be provided as string or integer")
     normalized = _normalize_key(name)
     try:
-        return const.ZONE_STATE_MAPPING_REVERSE[normalized]
+        return const.GLOBAL_OP_STATUS_MAPPING_REVERSE[normalized]
     except KeyError as exc:
         raise ValueError(f"unknown zone state '{name}'") from exc
 
