@@ -36,8 +36,8 @@ class ErrorResponse:
 class TemperatureData:
     """Temperature data model for API responses."""
     
-    outside_temperature: float
-    filtered_outside_temperature: float
+    outside_temperature: Optional[float]
+    filtered_outside_temperature: Optional[float]
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
