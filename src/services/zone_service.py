@@ -180,14 +180,19 @@ class ZoneService:
             
             # Write-through to physical Neasmart device
             write_through_success = False
+            write_through_verified = False
             try:
-                client = get_client()
+                client = get_client(force_recreate=True)  # Force recreation to pick up new config
                 success, msg = asyncio.run(
                     client.write_zone_setpoint(base_id, zone_id, dpt_9001_setpoint[0])
                 )
                 if success:
                     _logger.info(f"Write-through to physical device successful: {msg}")
                     write_through_success = True
+                    # Check if this was a verified-after-timeout success
+                    if "verified after timeout" in msg.lower():
+                        write_through_verified = True
+                        _logger.warning(f"Write succeeded but required verification due to timeout: {msg}")
                 else:
                     _logger.warning(f"Write-through to physical device failed: {msg}")
                     # Log the specific error for debugging
@@ -198,9 +203,11 @@ class ZoneService:
                 import traceback
                 _logger.error(f"Full traceback: {traceback.format_exc()}")
             
-            # If write-through failed, log a warning but continue
+            # If write-through failed, log appropriate warning
             if not write_through_success:
                 _logger.warning("Write-through to physical device failed. Data saved locally but may not persist on device restart.")
                 _logger.warning("Check Waveshare gateway connection and Neasmart device communication.")
+            elif write_through_verified:
+                _logger.info("Write-through succeeded with verification. Device communication may be slow but functional.")
         
         return True, "Zone updated successfully", dpt_9001_setpoint
