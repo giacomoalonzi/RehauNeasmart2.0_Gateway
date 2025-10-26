@@ -61,7 +61,7 @@ class ZonesListResponseSchema(Schema):
 
 class ZoneUpdateRequestSchema(Schema):
     """Schema for zone update request."""
-    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Zone operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled'], description="Zone operation state")
     setpoint = fields.Float(description="New temperature setpoint. Ignored if state is set to 'off'.", example=22.5)
 
 

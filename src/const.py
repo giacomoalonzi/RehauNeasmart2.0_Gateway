@@ -152,10 +152,9 @@ GLOBAL_OP_STATUS_MAPPING = {
     5: "party",         # Zone is in party mode
     6: "holiday"        # Zone is in long-term away mode
 }
-ZONE_OP_STATUS_MAPPING = {v: k for k, v in GLOBAL_OP_STATUS_MAPPING.items()}
+GLOBAL_OP_STATUS_MAPPING_REVERSE = {v: k for k, v in GLOBAL_OP_STATUS_MAPPING.items()}
 
-
-# Global operation status mapping (more intuitive for global operation)
+# Zone operation status mapping (limited to 5 states for zones)
 ZONE_OP_STATUS_MAPPING = {
     0: "off",
     1: "presence",      # Zone is active and occupied
@@ -163,7 +162,7 @@ ZONE_OP_STATUS_MAPPING = {
     3: "standby",       # Zone is in standby
     4: "scheduled",     # Zone follows a schedule
 }
-ZONE_OP_STATUS_MAPPING = {v: k for k, v in ZONE_OP_STATUS_MAPPING.items()}
+ZONE_OP_STATUS_MAPPING_REVERSE = {v: k for k, v in ZONE_OP_STATUS_MAPPING.items()}
 
 GLOBAL_OP_MODE_MAPPING = {
     0: "off",

@@ -66,7 +66,7 @@ def zone_state_to_name(state: int) -> str:
     if not isinstance(state, int):
         raise ValueError("zone state must be an integer")
     try:
-        return const.GLOBAL_OP_STATUS_MAPPING[state]
+        return const.ZONE_OP_STATUS_MAPPING[state]
     except KeyError as exc:
         raise ValueError(f"unknown zone state '{state}'") from exc
 
@@ -79,7 +79,7 @@ def name_to_zone_state(name: Union[str, int]) -> int:
         raise ValueError("zone state must be provided as string or integer")
     normalized = _normalize_key(name)
     try:
-        return const.GLOBAL_OP_STATUS_MAPPING_REVERSE[normalized]
+        return const.ZONE_OP_STATUS_MAPPING_REVERSE[normalized]
     except KeyError as exc:
         raise ValueError(f"unknown zone state '{name}'") from exc
 

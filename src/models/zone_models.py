@@ -60,7 +60,8 @@ class ZoneRequest:
         
         if self.state is not None:
             # State should be an integer (converted from string in from_dict)
-            if not isinstance(self.state, int) or self.state < 0 or self.state > 6:
+            # Zone states are limited to 0-4 (off, presence, away, standby, scheduled)
+            if not isinstance(self.state, int) or self.state < 0 or self.state > 4:
                 return False, "invalid state"
         
         if self.setpoint is not None:
