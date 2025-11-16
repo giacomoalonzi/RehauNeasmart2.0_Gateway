@@ -155,6 +155,7 @@ GLOBAL_OP_STATUS_MAPPING_REVERSE = {v: k for k, v in GLOBAL_OP_STATUS_MAPPING.it
 
 # Zone operation status mapping (limited to 4 states for zones)
 ZONE_OP_STATUS_MAPPING = {
+    0: "off",           # Zone is off or uninitialized
     1: "presence",      # Zone is active and occupied
     2: "away",          # Zone is in energy-saving mode
     3: "standby",       # Zone is in standby
