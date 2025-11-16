@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  rehau-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rehau-neasmart-gateway
+    restart: unless-stopped
+    ports:
+      - "5000:5000"  # Flask REST API
+      - "502:502"    # Modbus TCP
+    volumes:
+      # Persistent data storage
+      - ./data:/data
+      # Optional: mount config file
+      # - ./config/options.json:/data/options.json:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      # Optional: override default config via environment variables
+      # - LISTEN_ADDRESS=0.0.0.0
+      # - LISTEN_PORT=502
+      # - SERVER_TYPE=tcp
+      # - SLAVE_ID=240
+    # For serial Modbus, you may need to add device mapping:
+    # devices:
+    #   - /dev/ttyUSB0:/dev/ttyUSB0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+

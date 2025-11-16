@@ -1,0 +1,72 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test coverage
+htmlcov/
+.coverage
+.pytest_cache/
+.tox/
+
+# Logs
+logs/
+*.log
+data/*.log
+
+# Database files (will be created at runtime)
+data/*.db
+data/*.db-journal
+
+# Config files (should be mounted as volumes)
+config/
+
+# Home Assistant specific
+rehau_neasmart2.0_gateway/build.yaml
+rehau_neasmart2.0_gateway/config.yaml
+rehau_neasmart2.0_gateway/apparmor.txt
+rehau_neasmart2.0_gateway/translations/
+rehau_neasmart2.0_gateway/rootfs/etc/
+rehau_neasmart2.0_gateway/imgs/
+rehau_neasmart2.0_gateway/CHANGELOG.md
+rehau_neasmart2.0_gateway/DOCS.md
+rehau_neasmart2.0_gateway/waveshare_poegw_howto.md
+rehau_neasmart2.0_gateway/Dockerfile
+repository.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
