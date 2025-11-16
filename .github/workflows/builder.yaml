@@ -1,111 +1,84 @@
-name: Builder
-
-env:
-  BUILD_ARGS: "--test"
-  MONITORED_FILES: "build.yaml config.yaml Dockerfile rootfs"
+name: Test and Build Docker
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  init:
+  extract-version:
+    name: Extract Version from Git Tag
     runs-on: ubuntu-latest
-    name: Initialize builds
     outputs:
-      changed_addons: ${{ steps.changed_addons.outputs.addons }}
-      changed: ${{ steps.changed_addons.outputs.changed }}
+      version: ${{ steps.vars.outputs.version }}
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v3.5.2
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-      - name: Get changed files
-        id: changed_files
-        uses: jitterbit/get-changed-files@v1
-
-      - name: Find add-on directories
-        id: addons
-        uses: home-assistant/actions/helpers/find-addons@master
-
-      - name: Get changed add-ons
-        id: changed_addons
+      - name: Extract Version from Git Tag
+        id: vars
         run: |
-          declare -a changed_addons
-          for addon in ${{ steps.addons.outputs.addons }}; do
-            if [[ "${{ steps.changed_files.outputs.all }}" =~ $addon ]]; then
-              for file in ${{ env.MONITORED_FILES }}; do
-                  if [[ "${{ steps.changed_files.outputs.all }}" =~ $addon/$file ]]; then
-                    if [[ ! "${changed_addons[@]}" =~ $addon ]]; then
-                      changed_addons+=("\"${addon}\",");
-                    fi
-                  fi
-              done
-            fi
-          done
+          VERSION=$(git describe --tags --abbrev=0 || echo "latest")
+          echo "version=${VERSION}" >> $GITHUB_ENV
+          echo "::set-output name=version::${VERSION}"
+      - name: Debug Extracted Version
+        run: echo "Extracted version ${{ steps.vars.outputs.version }}"
 
-          changed=$(echo ${changed_addons[@]} | rev | cut -c 2- | rev)
-
-          if [[ -n ${changed} ]]; then
-            echo "Changed add-ons: $changed";
-            echo "changed=true" >> $GITHUB_OUTPUT;
-            echo "addons=[$changed]" >> $GITHUB_OUTPUT;
-          else
-            echo "No add-on had any monitored files changed (${{ env.MONITORED_FILES }})";
-          fi
-  build:
-    needs: init
+  test:
+    name: Run Unit Tests
+    needs: extract-version
     runs-on: ubuntu-latest
-    if: needs.init.outputs.changed == 'true'
-    name: Build ${{ matrix.arch }} ${{ matrix.addon }} add-on
-    strategy:
-      matrix:
-        addon: ${{ fromJson(needs.init.outputs.changed_addons) }}
-        arch: ["aarch64", "amd64", "armhf", "armv7", "i386"]
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v3.5.2
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - name: Get information
-        id: info
-        uses: home-assistant/actions/helpers/info@master
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          path: "./${{ matrix.addon }}"
+          python-version: '3.9'
 
-      - name: Check if add-on should be built
-        id: check
+      - name: Install Dependencies
         run: |
-          if [[ "${{ steps.info.outputs.architectures }}" =~ ${{ matrix.arch }} ]]; then
-             echo "build_arch=true" >> $GITHUB_OUTPUT;
-             echo "image=$(echo ${{ steps.info.outputs.image }} | cut -d'/' -f3)" >> $GITHUB_OUTPUT;
-             if [[ -z "${{ github.head_ref }}" ]] && [[ "${{ github.event_name }}" == "push" ]]; then
-                 echo "BUILD_ARGS=" >> $GITHUB_ENV;
-             fi
-           else
-             echo "${{ matrix.arch }} is not a valid arch for ${{ matrix.addon }}, skipping build";
-             echo "build_arch=false" >> $GITHUB_OUTPUT;
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r src/requirements.txt
+      - name: Run Unit Tests
+        run: |
+          source venv/bin/activate
+          python -m unittest discover src
+  build:
+    name: Build and Push Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Validate Docker Tag
+        run: |
+          if [ -z "${{ needs.extract-version.outputs.version }}" ]; then
+            echo "Version is not set, using fallback tag 'latest'."
+            echo "fallback_version=latest" >> $GITHUB_ENV
+          else
+            echo "fallback_version=${{ needs.extract-version.outputs.version }}" >> $GITHUB_ENV
           fi
-
-      - name: Login to GitHub Container Registry
-        if: env.BUILD_ARGS != '--test'
-        uses: docker/login-action@v2.1.0
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build ${{ matrix.addon }} add-on
-        if: steps.check.outputs.build_arch == 'true'
-        uses: home-assistant/builder@2023.03.0
+      - name: Test Docker Login
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
         with:
-          args: |
-            ${{ env.BUILD_ARGS }} \
-            --${{ matrix.arch }} \
-            --target /data/${{ matrix.addon }} \
-            --image "${{ steps.check.outputs.image }}" \
-            --docker-hub "ghcr.io/${{ github.repository_owner }}" \
-            --addon
+          context: .
+          push: true
+          platforms: linux/amd64 #
+          tags: |
+            giacomoalonzi/rehauneasmart_2_0_gateway:${{ env.fallback_version }}
+            giacomoalonzi/rehauneasmart_2_0_gateway:latest
