@@ -72,11 +72,9 @@ class OperationState:
         Returns:
             tuple[bool, str]: (is_valid, error_message)
         """
-        if not self.state:
-            return False, "missing state key in payload"
-        
         # State should be an integer (converted from string in from_dict)
-        if not isinstance(self.state, int) or self.state < 1 or self.state > 6:
+        # Valid range is 0-6 (0 = off, 1-6 = various operation states)
+        if not isinstance(self.state, int) or self.state < 0 or self.state > 6:
             return False, "invalid state"
         
         return True, ""

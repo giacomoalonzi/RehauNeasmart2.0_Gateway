@@ -144,6 +144,7 @@ DATASTORE_PATH = "./data/registers.db"        # Path to local DB for register st
 
 # Global operation status mapping (more intuitive for global operation)
 GLOBAL_OP_STATUS_MAPPING = {
+    0: "off",           # System is off or uninitialized
     1: "presence",      # Zone is active and occupied
     2: "away",          # Zone is in energy-saving mode
     3: "standby",       # Zone is in standby

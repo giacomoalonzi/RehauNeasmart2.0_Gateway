@@ -51,12 +51,14 @@ class TestConstantsRefactoring(unittest.TestCase):
     
     def test_state_mapping_constants(self):
         """Test state mapping constants."""
-        # Test state mapping
+        # Test state mapping (including 0 = off)
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[0], "off")
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[1], "presence")
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[2], "away")
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[3], "standby")
         
         # Test reverse mapping
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["off"], 0)
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["presence"], 1)
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["away"], 2)
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["standby"], 3)
