@@ -144,7 +144,6 @@ DATASTORE_PATH = "./data/registers.db"        # Path to local DB for register st
 
 # Global operation status mapping (more intuitive for global operation)
 GLOBAL_OP_STATUS_MAPPING = {
-    0: "off",
     1: "presence",      # Zone is active and occupied
     2: "away",          # Zone is in energy-saving mode
     3: "standby",       # Zone is in standby
@@ -154,9 +153,8 @@ GLOBAL_OP_STATUS_MAPPING = {
 }
 GLOBAL_OP_STATUS_MAPPING_REVERSE = {v: k for k, v in GLOBAL_OP_STATUS_MAPPING.items()}
 
-# Zone operation status mapping (limited to 5 states for zones)
+# Zone operation status mapping (limited to 4 states for zones)
 ZONE_OP_STATUS_MAPPING = {
-    0: "off",
     1: "presence",      # Zone is active and occupied
     2: "away",          # Zone is in energy-saving mode
     3: "standby",       # Zone is in standby
@@ -165,7 +163,6 @@ ZONE_OP_STATUS_MAPPING = {
 ZONE_OP_STATUS_MAPPING_REVERSE = {v: k for k, v in ZONE_OP_STATUS_MAPPING.items()}
 
 GLOBAL_OP_MODE_MAPPING = {
-    0: "off",
     1: "auto",
     2: "heating",
     3: "cooling",

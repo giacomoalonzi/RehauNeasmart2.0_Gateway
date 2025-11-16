@@ -367,3 +367,4 @@ class ModbusOperationLog:
 - Data type validation for all operations
 
 This architecture provides a robust, scalable solution for integrating the Rehau Neasmart 2.0 system with modern web APIs while maintaining real-time communication with the physical device.
+

@@ -38,7 +38,7 @@ class OperationMode:
             return False, "missing mode key in payload"
         
         # Mode should be an integer (converted from string in from_dict)
-        if not isinstance(self.mode, int) or self.mode < 0 or self.mode > 5:
+        if not isinstance(self.mode, int) or self.mode < 1 or self.mode > 5:
             return False, "invalid mode"
         
         return True, ""
@@ -76,7 +76,7 @@ class OperationState:
             return False, "missing state key in payload"
         
         # State should be an integer (converted from string in from_dict)
-        if not isinstance(self.state, int) or self.state < 0 or self.state > 6:
+        if not isinstance(self.state, int) or self.state < 1 or self.state > 6:
             return False, "invalid state"
         
         return True, ""

@@ -52,26 +52,26 @@ class TestConstantsRefactoring(unittest.TestCase):
     def test_state_mapping_constants(self):
         """Test state mapping constants."""
         # Test state mapping
-        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[0], "off")
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[1], "presence")
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[2], "away")
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING[3], "standby")
         
         # Test reverse mapping
-        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["off"], 0)
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["presence"], 1)
         self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["away"], 2)
+        self.assertEqual(const.GLOBAL_OP_STATUS_MAPPING_REVERSE["standby"], 3)
     
     def test_mode_mapping_constants(self):
         """Test mode mapping constants."""
         # Test mode mapping
-        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[0], "off")
         self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[1], "auto")
         self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[2], "heating")
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING[3], "cooling")
         
         # Test reverse mapping
-        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["off"], 0)
         self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["auto"], 1)
         self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["heating"], 2)
+        self.assertEqual(const.GLOBAL_OP_MODE_MAPPING_REVERSE["cooling"], 3)
     
     def test_zone_address_calculation(self):
         """Test zone address calculation with new constants."""
