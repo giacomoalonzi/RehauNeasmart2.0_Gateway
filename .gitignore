@@ -2,9 +2,8 @@
 .DS_Store
 *.log
 venv/
-**/**__pycache__**/
+**/__pycache__/
 .env
 old_main.py
-src/__pycache__/
 config
 old_*

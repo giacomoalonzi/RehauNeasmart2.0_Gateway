@@ -22,7 +22,7 @@ jobs:
         run: |
           VERSION=$(git describe --tags --abbrev=0 || echo "latest")
           echo "version=${VERSION}" >> $GITHUB_ENV
-          echo "::set-output name=version::${VERSION}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Debug Extracted Version
         run: echo "Extracted version ${{ steps.vars.outputs.version }}"

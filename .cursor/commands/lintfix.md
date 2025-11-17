@@ -1,14 +1,15 @@
 # Lint Fix Command
 
-This command automatically fixes linting issues across the Commerce Clarity monorepo using ESLint, Prettier, and TypeScript.
+This command automatically fixes linting issues across the Rehau Neasmart 2.0 Gateway Python/Flask project using black, ruff, flake8, mypy, isort, and pytest.
 
 ## What it does
 
-1. **ESLint Auto-fix**: Automatically fixes fixable ESLint issues
-2. **Prettier Formatting**: Formats code according to project style guidelines
-3. **TypeScript Check**: Validates TypeScript types and fixes import issues
-4. **Import Organization**: Sorts and organizes imports according to project rules
-5. **Unused Import Removal**: Removes unused imports and variables
+1. **Black Formatting**: Automatically formats code according to PEP 8 style guidelines
+2. **Ruff Linting**: Fast Python linter that checks for errors and style issues
+3. **Import Sorting**: Organizes imports with isort according to project conventions
+4. **Type Checking**: Validates Python types with mypy
+5. **Code Quality**: Checks for common issues with flake8
+6. **Test Validation**: Runs pytest to ensure fixes don't break functionality
 
 ## Usage
 
@@ -17,73 +18,135 @@ Run this command when you want to:
 - Fix linting errors automatically
 - Format code consistently
 - Clean up imports and unused code
-- Ensure code follows project standards
+- Ensure code follows Python/Flask project standards
+- Validate type hints and catch type errors
 
 ## Commands executed
 
 ```bash
-# Fix ESLint issues across all packages
-yarn lint --fix
+# Format code with black
+black .
 
-# Format code with Prettier
-yarn format
+# Lint and auto-fix with ruff
+ruff check . --fix
+ruff format .
 
-# Type check all packages
-yarn typecheck
+# Sort imports with isort
+isort .
 
-# Fix specific common issues
-npx eslint . --fix --ext .ts,.tsx,.js,.jsx
-npx prettier . --write
+# Type check with mypy
+mypy src/
+
+# Lint with flake8 (read-only, no auto-fix)
+flake8 src/ tests/
+
+# Run tests to ensure fixes don't break functionality
+pytest
 ```
 
 ## Scope
 
 This command works on:
 
-- **apps/web**: Main web application
-- **apps/storybook**: Storybook documentation
-- **packages/ui**: UI component library
-- **packages/theme**: Design system theme
+- **`src/`**: Main application code (Flask API, Modbus client, services, models)
+- **`tests/`**: Test suite (unit and integration tests)
+- **`config/`**: Configuration files (if Python files are present)
+
+**Note**: Database files (`data/*.db`), logs, and virtual environments are excluded.
 
 ## What gets fixed
 
-- **Code Style**: Indentation, spacing, quotes, semicolons
-- **Import Organization**: Alphabetical sorting, grouping (external → internal → relative)
-- **TypeScript Issues**: Type errors, unused variables, missing types
-- **React Issues**: Hook dependencies, JSX formatting, component patterns
-- **Unused Code**: Unused imports, variables, and functions
+### Auto-fixes (automatic)
+
+- **Code Style**: Indentation, spacing, line length, quotes (black)
+- **Import Organization**: Alphabetical sorting, grouping (standard library → third-party → local) (isort)
+- **Code Quality**: Unused imports, undefined names, syntax errors (ruff)
+- **Formatting**: Consistent code formatting across the project (ruff format)
+
+### Type Checking (mypy)
+
+- Type errors and inconsistencies
+- Missing type hints
+- Incorrect type annotations
+- Import type checking
+
+### Code Quality Checks (flake8)
+
+- PEP 8 style violations
+- Complexity warnings
+- Unused variables and imports
+- Code smells
 
 ## Manual fixes required
 
 Some issues require manual attention:
 
-- Complex TypeScript type errors
+- Complex type errors that need architectural changes
 - Logic errors or bugs
 - Architecture decisions
-- Custom ESLint rules that can't be auto-fixed
+- Custom type stubs for third-party libraries
+- Flask-specific patterns that need manual review
+- Modbus communication logic that requires domain knowledge
 
 ## Project-specific rules
 
 The command respects these project conventions:
 
-- **Import Order**: External → Internal → Relative imports
-- **TypeScript**: Strict mode with no `any` types
-- **React**: Functional components with hooks
-- **Styling**: Tailwind CSS with CVA patterns
-- **Architecture**: Tanstack Router, Zustand, Tanstack Query
+- **Python Version**: Python 3.9+
+- **Code Style**: Black formatting (line length: 88 characters)
+- **Import Order**: Standard library → Third-party → Local imports (isort)
+- **Type Hints**: Gradual typing with mypy (strict mode recommended)
+- **Flask Patterns**: Blueprint-based architecture, service layer separation
+- **Modbus**: Circuit breaker patterns, error handling, retry logic
+- **Testing**: pytest with markers (`@pytest.mark.unit`, `@pytest.mark.integration`)
+
+## Dependencies
+
+All linting tools should be installed via `src/requirements.txt` or development dependencies:
+
+```bash
+pip install -r src/requirements.txt
+pip install black ruff flake8 mypy isort pytest pytest-cov
+```
+
+See `src/requirements.txt` for the complete list of project dependencies.
+
+## CI Integration
+
+Linting checks are typically integrated into CI/CD pipelines (e.g., GitHub Actions) to ensure code quality before merging:
+
+```yaml
+# Example CI step
+- name: Lint and Format Check
+  run: |
+    black --check .
+    ruff check .
+    isort --check-only .
+    mypy src/
+    flake8 src/ tests/
+```
 
 ## Output
 
 After running, you'll see:
 
-- ✅ Fixed issues count
-- ⚠️ Remaining issues that need manual attention
-- 📝 Suggestions for complex fixes
+- ✅ Fixed issues count (black, ruff, isort)
+- ⚠️ Remaining issues that need manual attention (mypy, flake8)
+- 📝 Type errors and suggestions for complex fixes
 - 🎯 Files that were modified
+- 🧪 Test results (pytest)
 
 ## Best practices
 
 1. **Run before commits**: Always lint-fix before committing code
 2. **Review changes**: Check auto-fixes don't change logic
-3. **Manual fixes**: Address remaining issues manually
-4. **Test after**: Run tests to ensure fixes don't break functionality
+3. **Manual fixes**: Address remaining type errors and complex issues manually
+4. **Test after**: Run `pytest` to ensure fixes don't break functionality
+5. **Type hints**: Add type hints gradually, especially for new code
+6. **Flask patterns**: Follow Flask blueprint and service layer patterns
+
+## Related Documentation
+
+- See `README.md` for project overview and setup
+- See `tests/README.md` for testing patterns and organization
+- See `.cursor/rules/` for project-specific coding patterns and conventions
