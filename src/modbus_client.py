@@ -1,0 +1,526 @@
+#!/usr/bin/env python3
+
+"""
+Modbus Client for Writing to Physical Neasmart Device
+
+This module implements a Modbus TCP client that can write setpoints
+directly to the physical Neasmart device through the Waveshare Gateway.
+"""
+
+import logging
+import asyncio
+import json
+import os
+from typing import Optional, Tuple
+from pymodbus.client import AsyncModbusTcpClient
+from pymodbus.exceptions import ModbusException
+import const
+from config import config_manager
+
+_logger = logging.getLogger(__name__)
+
+
+class NeasmartModbusClient:
+    """
+    Modbus TCP client for communicating with the physical Neasmart device.
+    
+    This client connects to the Waveshare RS485-to-TCP gateway and writes
+    setpoints directly to the Neasmart device to ensure changes persist.
+    """
+    
+    def __init__(self, gateway_host: Optional[str] = None, gateway_port: Optional[int] = None, 
+                 neasmart_slave_id: Optional[int] = None):
+        """
+        Initialize Modbus client.
+        
+        Args:
+            gateway_host: IP address of Waveshare gateway (defaults to config file)
+            gateway_port: Port of Waveshare gateway (defaults to config file)
+            neasmart_slave_id: Modbus slave ID of the Neasmart device (defaults to config file)
+        """
+        # Load gateway and fallback configuration from unified config
+        gateway_config = config_manager.get_gateway_config()
+        fallback_config = config_manager.get_fallback_config()
+        
+        # Store config for later use
+        self.config = {
+            "gateway": gateway_config,
+            "fallback": fallback_config
+        }
+        
+        # Use provided values or fall back to config
+        self.gateway_host = gateway_host or gateway_config.get("host", "127.0.0.1")
+        self.gateway_port = gateway_port or gateway_config.get("port", 502)
+        self.neasmart_slave_id = neasmart_slave_id or gateway_config.get("neasmart_slave_id", 240)
+        self.timeout = gateway_config.get("timeout", 15)
+        self.retry_delay = gateway_config.get("retry_delay", 3)
+        self.max_retries = gateway_config.get("retry_attempts", 3)
+        
+        _logger.info(f"Modbus client configured: timeout={self.timeout}s, retry_delay={self.retry_delay}s, max_retries={self.max_retries}")
+        
+        self.client: Optional[AsyncModbusTcpClient] = None
+        self.connected = False
+        self._connect_lock = asyncio.Lock()
+        self.consecutive_errors = 0
+        self.last_error_time = 0
+    
+    def is_gateway_enabled(self) -> bool:
+        """Check if gateway write-through is enabled."""
+        if not self.config.get("gateway", {}).get("enabled", True):
+            return False
+        
+        # Check if we should disable due to consecutive errors
+        if self.config.get("fallback", {}).get("disable_write_through_on_error", False):
+            max_errors = self.config.get("fallback", {}).get("max_consecutive_errors", 3)
+            if self.consecutive_errors >= max_errors:
+                _logger.warning(f"Gateway disabled due to {self.consecutive_errors} consecutive errors")
+                return False
+        
+        return True
+    
+    def _record_error(self):
+        """Record an error for fallback logic."""
+        self.consecutive_errors += 1
+        self.last_error_time = asyncio.get_event_loop().time()
+        _logger.warning(f"Gateway error recorded. Consecutive errors: {self.consecutive_errors}")
+    
+    def _record_success(self):
+        """Record a successful operation."""
+        if self.consecutive_errors > 0:
+            _logger.info(f"Gateway operation successful. Resetting error count from {self.consecutive_errors}")
+            self.consecutive_errors = 0
+    
+    async def connect(self) -> bool:
+        """
+        Connect to the Waveshare gateway.
+        
+        Returns:
+            bool: True if connected successfully
+        """
+        async with self._connect_lock:
+            if self.connected and self.client:
+                return True
+            
+            try:
+                _logger.info(f"Connecting to Waveshare gateway at {self.gateway_host}:{self.gateway_port}")
+                self.client = AsyncModbusTcpClient(
+                    host=self.gateway_host,
+                    port=self.gateway_port,
+                    timeout=self.timeout
+                )
+                await self.client.connect()
+                
+                if self.client.connected:
+                    self.connected = True
+                    _logger.info("Successfully connected to Waveshare gateway")
+                    return True
+                else:
+                    _logger.error("Failed to connect to Waveshare gateway")
+                    return False
+                    
+            except Exception as e:
+                _logger.error(f"Error connecting to Waveshare gateway: {e}")
+                self.connected = False
+                return False
+    
+    async def disconnect(self):
+        """Disconnect from the Waveshare gateway."""
+        if self.client:
+            try:
+                self.client.close()
+                _logger.info("Disconnected from Waveshare gateway")
+            except Exception as e:
+                _logger.error(f"Error disconnecting: {e}")
+            finally:
+                self.connected = False
+                self.client = None
+    
+    async def write_zone_setpoint(self, base_id: int, zone_id: int, 
+                                  dpt_9001_value: int, max_retries: int = None) -> Tuple[bool, str]:
+        """
+        Write setpoint to a zone on the physical Neasmart device.
+        
+        Args:
+            base_id: Base ID (1-4)
+            zone_id: Zone ID (1-12)
+            dpt_9001_value: DPT 9001 encoded setpoint value
+            max_retries: Maximum number of retry attempts (defaults to config)
+            
+        Returns:
+            Tuple[bool, str]: (success, message)
+        """
+        # Use config value if max_retries not provided
+        if max_retries is None:
+            max_retries = self.max_retries
+        # Check if gateway is enabled
+        if not self.is_gateway_enabled():
+            return False, "Gateway write-through is disabled due to configuration or consecutive errors"
+        
+        # Calculate register address
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
+        setpoint_addr = zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET
+        
+        _logger.info(f"Writing setpoint to Neasmart device: addr={setpoint_addr}, value={dpt_9001_value}")
+        
+        # Ensure connected
+        if not self.connected:
+            success = await self.connect()
+            if not success:
+                self._record_error()
+                return False, "Failed to connect to Waveshare gateway"
+        
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                _logger.info(f"Write attempt {attempt + 1}/{max_retries}")
+                
+                # Write single holding register (Modbus function code 6) with timeout
+                response = await asyncio.wait_for(
+                    self.client.write_register(
+                        address=setpoint_addr,
+                        value=dpt_9001_value,
+                        slave=self.neasmart_slave_id
+                    ),
+                    timeout=self.timeout
+                )
+                
+                if response.isError():
+                    error_msg = f"Modbus write error: {response}"
+                    _logger.warning(f"Attempt {attempt + 1} failed: {error_msg}")
+                    last_error = error_msg
+                    
+                    # If this is not the last attempt, wait before retrying
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(self.retry_delay)  # Wait before retry
+                        continue
+                    else:
+                        self._record_error()
+                        return False, error_msg
+                
+                _logger.info(f"Successfully wrote setpoint to Neasmart device on attempt {attempt + 1}")
+                self._record_success()
+                return True, "Setpoint written to physical device"
+                
+            except asyncio.TimeoutError:
+                error_msg = f"Timeout after {self.timeout}s on attempt {attempt + 1}"
+                _logger.warning(error_msg)
+                last_error = error_msg
+                
+                # If this is not the last attempt, wait before retrying
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)  # Wait before retry
+                    continue
+                else:
+                    self._record_error()
+                    return False, error_msg
+                    
+            except ModbusException as e:
+                error_msg = f"Modbus exception on attempt {attempt + 1}: {e}"
+                _logger.warning(error_msg)
+                last_error = error_msg
+                
+                # If this is not the last attempt, wait before retrying
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)  # Wait before retry
+                    continue
+                else:
+                    self._record_error()
+                    return False, error_msg
+                    
+            except Exception as e:
+                error_msg = f"Unexpected error on attempt {attempt + 1}: {e}"
+                _logger.error(error_msg)
+                last_error = error_msg
+                
+                # If this is not the last attempt, wait before retrying
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(self.retry_delay)  # Wait before retry
+                    continue
+                else:
+                    self._record_error()
+                    return False, error_msg
+        
+        # If we get here, all retries failed
+        # Try verification to see if the value was actually written despite timeout
+        _logger.info("All write attempts failed, attempting verification...")
+        verified, verify_msg = await self.verify_zone_setpoint_write(base_id, zone_id, dpt_9001_value)
+        
+        if verified:
+            _logger.warning(f"Write verification successful despite timeout: {verify_msg}")
+            self._record_success()
+            return True, f"Write succeeded (verified after timeout): {verify_msg}"
+        else:
+            _logger.error(f"Write verification failed: {verify_msg}")
+            self._record_error()
+            return False, f"All {max_retries} attempts failed. Last error: {last_error}"
+    
+    async def verify_zone_setpoint_write(self, base_id: int, zone_id: int, expected_value: int) -> Tuple[bool, str]:
+        """
+        Verify that a setpoint was actually written to the physical device.
+        
+        Args:
+            base_id: Base ID (1-4)
+            zone_id: Zone ID (1-12)
+            expected_value: Expected DPT 9001 encoded setpoint value
+            
+        Returns:
+            Tuple[bool, str]: (verified, message)
+        """
+        try:
+            # Calculate register address
+            zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
+            setpoint_addr = zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET
+            
+            _logger.info(f"Verifying setpoint write: addr={setpoint_addr}, expected={expected_value}")
+            
+            # Ensure connected
+            if not self.connected:
+                success = await self.connect()
+                if not success:
+                    return False, "Failed to connect to Waveshare gateway for verification"
+            
+            # Read the register we just wrote to with timeout
+            response = await asyncio.wait_for(
+                self.client.read_holding_registers(
+                    address=setpoint_addr,
+                    count=1,
+                    slave=self.neasmart_slave_id
+                ),
+                timeout=self.timeout
+            )
+            
+            if response.isError():
+                error_msg = f"Modbus read error during verification: {response}"
+                _logger.error(error_msg)
+                return False, error_msg
+            
+            actual_value = response.registers[0]
+            _logger.info(f"Verification read: addr={setpoint_addr}, expected={expected_value}, actual={actual_value}")
+            
+            if actual_value == expected_value:
+                return True, f"Verification successful: value {actual_value} matches expected {expected_value}"
+            else:
+                return False, f"Verification failed: expected {expected_value}, got {actual_value}"
+                
+        except asyncio.TimeoutError:
+            error_msg = f"Timeout during verification after {self.timeout}s"
+            _logger.error(error_msg)
+            return False, error_msg
+        except ModbusException as e:
+            error_msg = f"Modbus exception during verification: {e}"
+            _logger.error(error_msg)
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error during verification: {e}"
+            _logger.error(error_msg)
+            return False, error_msg
+    
+    async def write_zone_state(self, base_id: int, zone_id: int, state: int) -> Tuple[bool, str]:
+        """
+        Write state to a zone on the physical Neasmart device.
+        
+        Args:
+            base_id: Base ID (1-4)
+            zone_id: Zone ID (1-12)
+            state: Zone state value
+            
+        Returns:
+            Tuple[bool, str]: (success, message)
+        """
+        # Calculate register address
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
+        
+        _logger.info(f"Writing state to Neasmart device: addr={zone_addr}, value={state}")
+        
+        # Ensure connected
+        if not self.connected:
+            success = await self.connect()
+            if not success:
+                return False, "Failed to connect to Waveshare gateway"
+        
+        try:
+            # Write single holding register (Modbus function code 6) with timeout
+            response = await asyncio.wait_for(
+                self.client.write_register(
+                    address=zone_addr,
+                    value=state,
+                    slave=self.neasmart_slave_id
+                ),
+                timeout=self.timeout
+            )
+            
+            if response.isError():
+                error_msg = f"Modbus write error: {response}"
+                _logger.error(error_msg)
+                return False, error_msg
+            
+            _logger.info(f"Successfully wrote state to Neasmart device")
+            return True, "State written to physical device"
+            
+        except asyncio.TimeoutError:
+            error_msg = f"Timeout writing state after {self.timeout}s"
+            _logger.error(error_msg)
+            return False, error_msg
+        except ModbusException as e:
+            error_msg = f"Modbus exception: {e}"
+            _logger.error(error_msg)
+            return False, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error writing state: {e}"
+            _logger.error(error_msg)
+            return False, error_msg
+    
+    async def read_zone_setpoint(self, base_id: int, zone_id: int) -> Tuple[bool, Optional[int], str]:
+        """
+        Read setpoint from the physical Neasmart device.
+        
+        Args:
+            base_id: Base ID (1-4)
+            zone_id: Zone ID (1-12)
+            
+        Returns:
+            Tuple[bool, Optional[int], str]: (success, dpt_9001_value, message)
+        """
+        # Calculate register address
+        zone_addr = (base_id - 1) * const.ZONE_BASE_ID_MULTIPLIER + zone_id * const.ZONE_ID_MULTIPLIER
+        setpoint_addr = zone_addr + const.ZONE_SETPOINT_ADDR_OFFSET
+        
+        # Ensure connected
+        if not self.connected:
+            success = await self.connect()
+            if not success:
+                return False, None, "Failed to connect to Waveshare gateway"
+        
+        try:
+            # Read holding register (Modbus function code 3) with timeout
+            response = await asyncio.wait_for(
+                self.client.read_holding_registers(
+                    address=setpoint_addr,
+                    count=1,
+                    slave=self.neasmart_slave_id
+                ),
+                timeout=self.timeout
+            )
+            
+            if response.isError():
+                error_msg = f"Modbus read error: {response}"
+                _logger.error(error_msg)
+                return False, None, error_msg
+            
+            value = response.registers[0]
+            _logger.info(f"Read setpoint from Neasmart device: addr={setpoint_addr}, value={value}")
+            return True, value, "Successfully read setpoint"
+            
+        except asyncio.TimeoutError:
+            error_msg = f"Timeout reading setpoint after {self.timeout}s"
+            _logger.error(error_msg)
+            return False, None, error_msg
+        except ModbusException as e:
+            error_msg = f"Modbus exception: {e}"
+            _logger.error(error_msg)
+            return False, None, error_msg
+        except Exception as e:
+            error_msg = f"Unexpected error reading setpoint: {e}"
+            _logger.error(error_msg)
+            return False, None, error_msg
+
+
+# Global client instance
+_client: Optional[NeasmartModbusClient] = None
+
+
+def get_client(gateway_host: Optional[str] = None, gateway_port: Optional[int] = None, 
+               neasmart_slave_id: Optional[int] = None, force_recreate: bool = False) -> NeasmartModbusClient:
+    """
+    Get or create the global Neasmart Modbus client instance.
+    Configuration values are read from unified config.json by default.
+    
+    The client instance is reused across operations to maintain connection state and error tracking.
+    Only recreate when configuration actually changes, not on every operation.
+    
+    Args:
+        gateway_host: IP address of Waveshare gateway (optional, uses config if not provided)
+        gateway_port: Port of Waveshare gateway (optional, uses config if not provided)
+        neasmart_slave_id: Modbus slave ID of Neasmart device (optional, uses config if not provided)
+        force_recreate: Force recreation of client instance (only use when config changes)
+        
+    Returns:
+        NeasmartModbusClient: Global client instance (reused across calls)
+    """
+    global _client
+    
+    # Check if we need to recreate the client
+    should_recreate = False
+    if _client is None:
+        should_recreate = True
+    elif force_recreate:
+        # Only recreate if configuration parameters are actually different
+        gateway_config = config_manager.get_gateway_config()
+        new_host = gateway_host or gateway_config.get("host", "127.0.0.1")
+        new_port = gateway_port or gateway_config.get("port", 502)
+        new_slave_id = neasmart_slave_id or gateway_config.get("neasmart_slave_id", 240)
+        
+        if (_client.gateway_host != new_host or 
+            _client.gateway_port != new_port or 
+            _client.neasmart_slave_id != new_slave_id):
+            should_recreate = True
+            _logger.info("Configuration changed, recreating Modbus client")
+        else:
+            _logger.debug("Configuration unchanged, reusing existing Modbus client")
+    
+    if should_recreate:
+        # Preserve error tracking state when recreating to maintain fallback mechanism
+        preserved_consecutive_errors = 0
+        preserved_last_error_time = 0
+        old_client = None
+        if _client is not None:
+            _logger.info("Recreating Modbus client due to configuration change")
+            # Preserve error tracking state to maintain fallback mechanism
+            preserved_consecutive_errors = _client.consecutive_errors
+            preserved_last_error_time = _client.last_error_time
+            if preserved_consecutive_errors > 0:
+                _logger.info(f"Preserving error tracking state: {preserved_consecutive_errors} consecutive errors")
+            # Store reference to old client for cleanup
+            old_client = _client
+            _client = None
+        
+        # Create new client instance
+        _client = NeasmartModbusClient(gateway_host, gateway_port, neasmart_slave_id)
+        # Restore preserved error tracking state
+        if preserved_consecutive_errors > 0:
+            _client.consecutive_errors = preserved_consecutive_errors
+            _client.last_error_time = preserved_last_error_time
+        
+        # Properly disconnect old client to prevent connection leaks
+        if old_client is not None:
+            try:
+                # Close the connection synchronously if possible
+                if old_client.client is not None:
+                    try:
+                        # Try synchronous close first (most AsyncModbusTcpClient implementations support this)
+                        old_client.client.close()
+                    except Exception:
+                        # If synchronous close fails, try async disconnect
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                # Schedule async disconnect if loop is running
+                                asyncio.create_task(old_client.disconnect())
+                            else:
+                                # Run disconnect synchronously if loop exists but isn't running
+                                loop.run_until_complete(old_client.disconnect())
+                        except (RuntimeError, Exception):
+                            # No event loop or disconnect failed, force cleanup
+                            pass
+                # Mark as disconnected
+                old_client.connected = False
+                old_client.client = None
+                _logger.debug("Old Modbus client disconnected and cleaned up")
+            except Exception as e:
+                _logger.warning(f"Error disconnecting old Modbus client during recreation: {e}")
+                # Force cleanup even if disconnect fails
+                old_client.connected = False
+                old_client.client = None
+    
+    return _client
+
