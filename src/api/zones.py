@@ -246,13 +246,11 @@ def zone(base_id=None, zone_id=None):
                     mimetype='application/json'
                 )
             
-            success, message, dpt_9001_setpoint = zone_service.update_zone_data(
+            success, message = zone_service.update_zone_data(
                 base_id, zone_id, zone_request
             )
             
             response_data = {"message": message}
-            if dpt_9001_setpoint is not None:
-                response_data["dpt_9001_setpoint"] = dpt_9001_setpoint
             
             return current_app.response_class(
                 response=json.dumps(response_data),

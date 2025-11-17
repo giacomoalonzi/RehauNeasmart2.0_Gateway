@@ -79,8 +79,7 @@ class TestZonesSetpointUnit:
         # Mock successful update
         mock_service_instance.update_zone_data.return_value = (
             True, 
-            "Zone updated successfully", 
-            [12345]  # Mock DPT 9001 setpoint
+            "Zone updated successfully"
         )
         
         # Test POST request
@@ -94,7 +93,7 @@ class TestZonesSetpointUnit:
         assert response.status_code == 202
         response_data = response.get_json()
         assert response_data["message"] == "Zone updated successfully"
-        assert "dpt_9001_setpoint" in response_data
+        assert "dpt_9001_setpoint" not in response_data
     
     @patch('services.zone_service.ZoneService')
     def test_get_zone_data_mock(self, mock_zone_service):

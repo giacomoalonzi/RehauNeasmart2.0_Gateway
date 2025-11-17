@@ -70,7 +70,6 @@ class ZoneUpdateRequestSchema(Schema):
 class ZoneUpdateResponseSchema(Schema):
     """Schema for zone update response."""
     message = fields.Str(example="Zone updated successfully", description="Success message")
-    dpt_9001_setpoint = fields.Int(allow_none=True, description="DPT 9001 encoded setpoint value (if setpoint was updated)")
 
 
 class OperationStateResponseSchema(Schema):

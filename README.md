@@ -105,7 +105,7 @@ Below are the available API endpoints for interacting with the gateway.
   **Response**:
   ```json
   {
-    "dpt_9001_setpoint": [28729]
+    "message": "Zone updated successfully"
   }
   ```
 

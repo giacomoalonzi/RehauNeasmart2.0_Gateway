@@ -255,10 +255,6 @@ components:
           type: string
           example: "Zone updated successfully"
           description: "Success message"
-        dpt_9001_setpoint:
-          type: integer
-          nullable: true
-          description: "DPT 9001 encoded setpoint value (if setpoint was updated)"
       required:
         - message
     OperationStateResponse:

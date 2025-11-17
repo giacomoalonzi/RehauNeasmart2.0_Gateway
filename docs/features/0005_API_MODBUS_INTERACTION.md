@@ -108,7 +108,7 @@ def update_zone_data(self, base_id: int, zone_id: int, request: ZoneRequest):
     )
     
     # 2. Write to physical device via Modbus client
-    success, dpt_value, message = await modbus_client.write_zone_setpoint(
+    success, message = await modbus_client.write_zone_setpoint(
         base_id, zone_id, dpt_9001_setpoint
     )
 ```
