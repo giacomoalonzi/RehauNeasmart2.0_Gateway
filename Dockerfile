@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY src /app/src
 
-# Copy the data directory (including options.json)
+# Copy the data directory (for persistent storage like registers.db)
 COPY data /app/data
 
 
