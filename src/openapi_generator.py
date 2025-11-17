@@ -17,7 +17,12 @@ from marshmallow import Schema, fields
 
 class OperationStateSchema(Schema):
     """Schema for operation state enum."""
-    state = fields.Str(enum=['presence', 'away', 'standby', 'scheduled', 'party', 'holiday'])
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'])
+
+
+class ZoneStateSchema(Schema):
+    """Schema for zone state enum (limited to 0-4)."""
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled'])
 
 
 class BaseInfoSchema(Schema):
@@ -40,52 +45,47 @@ class TemperatureSchema(Schema):
 
 class ZoneSchema(Schema):
     """Schema for zone data."""
-    base = fields.Nested(BaseInfoSchema)
-    zone = fields.Nested(ZoneInfoSchema)
     baseId = fields.Int(example=1, description="Base ID for the zone")
     baseLabel = fields.Str(example="First Floor", description="Human-readable label for the base")
     zoneId = fields.Int(example=1, description="Zone ID within the base")
     zoneLabel = fields.Str(example="Living Room", description="Human-readable label for the zone")
-    state = fields.Nested(OperationStateSchema)
-    temperature = fields.Nested(TemperatureSchema)
-    setpoint = fields.Nested(TemperatureSchema, allow_none=True)
-    relative_humidity = fields.Int(example=45)
-    address = fields.Int(example=1300)
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled'], description="Zone operation state")
+    temperature = fields.Float(example=21.5, description="Current temperature")
+    setpoint = fields.Float(example=22.5, allow_none=True, description="Temperature setpoint")
+    relativeHumidity = fields.Int(example=45, description="Relative humidity percentage")
 
 
 class ZonesListResponseSchema(Schema):
     """Schema for zones list response."""
     zones = fields.List(fields.Nested(ZoneSchema))
-    count = fields.Int(example=8)
+    total = fields.Int(example=8, description="Total number of zones")
 
 
 class ZoneUpdateRequestSchema(Schema):
     """Schema for zone update request."""
-    state = fields.Str(enum=['presence', 'away', 'standby', 'scheduled'], description="Zone operation state")
-    setpoint = fields.Float(description="New temperature setpoint.", example=22.5)
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled'], description="Zone operation state")
+    setpoint = fields.Float(description="New temperature setpoint. Ignored if state is set to 'off'.", example=22.5)
 
 
 class ZoneUpdateResponseSchema(Schema):
     """Schema for zone update response."""
-    base = fields.Nested(BaseInfoSchema)
-    zone = fields.Nested(ZoneInfoSchema)
-    updated = fields.Dict(keys=fields.Str(), values=fields.Raw)
+    message = fields.Str(example="Zone updated successfully", description="Success message")
+    dpt_9001_setpoint = fields.Int(allow_none=True, description="DPT 9001 encoded setpoint value (if setpoint was updated)")
 
 
 class OperationStateResponseSchema(Schema):
     """Schema for operation state response."""
-    state = fields.Str(enum=['presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Current operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Current operation state")
 
 
 class OperationStateUpdateRequestSchema(Schema):
     """Schema for operation state update request."""
-    state = fields.Str(enum=['presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], required=True, description="Operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], required=True, description="Operation state")
 
 
 class OperationStateUpdateResponseSchema(Schema):
     """Schema for operation state update response."""
-    status = fields.Str(example='success')
-    state = fields.Str(enum=['presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Updated operation state")
+    state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'], description="Updated operation state")
 
 
 class DatabaseHealthSchema(Schema):
@@ -159,6 +159,7 @@ def create_openapi_spec(app: Flask) -> APISpec:
     
     # Register schemas
     spec.components.schema('OperationState', schema=OperationStateSchema)
+    spec.components.schema('ZoneState', schema=ZoneStateSchema)
     spec.components.schema('BaseInfo', schema=BaseInfoSchema)
     spec.components.schema('ZoneInfo', schema=ZoneInfoSchema)
     spec.components.schema('Temperature', schema=TemperatureSchema)

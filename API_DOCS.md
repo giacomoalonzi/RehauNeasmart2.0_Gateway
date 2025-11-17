@@ -154,13 +154,13 @@ Update zone parameters.
 
 **State Values:**
 
-- `"off"`: The zone is turned off. The setpoint will be ignored.
-- `"presence"`: The zone is active and occupied.
-- `"away"`: The zone is in energy-saving mode.
-- `"standby"`: The zone is in standby mode.
-- `"scheduled"`: The zone follows a pre-defined schedule.
-- `"party"`: The zone is in party mode.
-- `"holiday"`: The zone is in long-term away mode.
+- `"off"` (0): The zone is turned off. The setpoint will be ignored.
+- `"presence"` (1): The zone is active and occupied.
+- `"away"` (2): The zone is in energy-saving mode.
+- `"standby"` (3): The zone is in standby mode.
+- `"scheduled"` (4): The zone follows a pre-defined schedule.
+- `"party"` (5): The zone is in party mode.
+- `"holiday"` (6): The zone is in long-term away mode.
 
 **Note:** The API accepts both human-readable strings (e.g., "presence") and legacy integer values (e.g., 1) for backward compatibility.
 
@@ -226,12 +226,11 @@ Get global operation mode.
 
 **Mode Values:**
 
-- `"off"`: System is off
-- `"auto"`: Automatic mode
-- `"heating"`: Heating mode
-- `"cooling"`: Cooling mode
-- `"manual heating"`: Manual heating mode
-- `"manual cooling"`: Manual cooling mode
+- `"auto"` (1): Automatic mode
+- `"heating"` (2): Heating mode
+- `"cooling"` (3): Cooling mode
+- `"manual heating"` (4): Manual heating mode
+- `"manual cooling"` (5): Manual cooling mode
 
 #### POST /mode (Legacy v1)
 
@@ -261,13 +260,13 @@ Get global operation state.
 
 **State Values:**
 
-- `"off"`: System is off
-- `"normal"`: Normal operation
-- `"reduced"`: Reduced operation
-- `"standby"`: Standby mode
-- `"scheduled"`: Scheduled operation
-- `"party"`: Party mode
-- `"holiday"`: Holiday/absent mode
+- `"off"` (0): System is off or uninitialized
+- `"presence"` (1): Normal operation / Presence mode
+- `"away"` (2): Reduced operation / Away mode
+- `"standby"` (3): Standby mode
+- `"scheduled"` (4): Scheduled operation
+- `"party"` (5): Party mode
+- `"holiday"` (6): Holiday/absent mode
 
 #### POST /state (Legacy v1)
 

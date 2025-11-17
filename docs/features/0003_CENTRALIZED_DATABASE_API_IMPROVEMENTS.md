@@ -33,12 +33,12 @@ The current system has:
 
 ### Current Data Models
 **Zone Models** (`src/models/zone_models.py`):
-- `ZoneData`: state (int 0-6), setpoint (float), temperature (float), relative_humidity (int)
+- `ZoneData`: state (int 0-4), setpoint (float), temperature (float), relative_humidity (int)
 - `ZoneRequest`: state (Optional[int]), setpoint (Optional[float])
 
 **Operation Models** (`src/models/operation_models.py`):
 - `OperationMode`: mode (int 1-5) - Auto, Heating, Cooling, Manual Heating, Manual Cooling
-- `OperationState`: state (int 1-6) - Normal, Reduced, Standby, Scheduled, Party, Holiday
+- `OperationState`: state (int 0-6) - Off, Presence, Away, Standby, Scheduled, Party, Holiday
 
 **Device Models** (`src/models/device_models.py`):
 - `DehumidifierData`: state (int)
@@ -61,12 +61,18 @@ The current system has:
 - 6: "holiday"
 
 **Operation Modes** (from `src/const.py`):
-- 0: "off"
 - 1: "auto"
 - 2: "heating"
 - 3: "cooling"
 - 4: "manual heating"
 - 5: "manual cooling"
+
+**Zone States** (from `src/const.py`):
+- 0: "off"
+- 1: "presence"
+- 2: "away"
+- 3: "standby"
+- 4: "scheduled"
 
 ### Current Database Structure
 - SQLite database with `holding_registers` table
@@ -253,20 +259,20 @@ The current system has:
    - **GET /operation/state** - Return enriched state data:
      ```json
      {
-       "state": "normal"
+       "state": "presence"
      }
      ```
    - **POST /operation/state** - Accept state name or integer:
      ```json
      {
-       "state": "normal"  // or integer 1
+       "state": "presence"  // or integer 1
      }
      ```
    - **POST Response**:
      ```json
      {
        "status": "success",
-       "state": "normal"
+       "state": "presence"
      }
      ```
    - Same pattern for `/operation/mode` with mode values
@@ -401,15 +407,18 @@ Field transformations for API requests:
 - Integer 6 → String "holiday"
 
 **Operation Modes** (for API responses):
-- Integer 0 → String "off"
 - Integer 1 → String "auto"
 - Integer 2 → String "heating"
 - Integer 3 → String "cooling"
 - Integer 4 → String "manual_heating"
 - Integer 5 → String "manual_cooling"
 
-**Zone States** (same as Operation States):
-- Uses same mapping as operation states
+**Zone States** (for API responses):
+- Integer 0 → String "off"
+- Integer 1 → String "presence"
+- Integer 2 → String "away"
+- Integer 3 → String "standby"
+- Integer 4 → String "scheduled"
 
 ### Temperature Transformations
 
@@ -442,7 +451,7 @@ Field transformations for API requests:
 
 ### 2. Database Write Operation Flow
 ```
-1. API endpoint receives POST request (e.g., /zones/1/3 with {"state": "normal", "setpoint": 22.5})
+1. API endpoint receives POST request (e.g., /zones/1/3 with {"state": "presence", "setpoint": 22.5})
 2. Endpoint validates and parses JSON payload
 3. Endpoint calls service method (e.g., zone_service.update_zone_data(1, 3, request))
 4. Service validates request data

@@ -83,8 +83,8 @@ paths:
             schema:
               $ref: '#/components/schemas/ZoneUpdateRequest'
       responses:
-        '200':
-          description: 'Confirmation of the zone update.'
+        '202':
+          description: 'Zone update accepted.'
           content:
             application/json:
               schema:
@@ -120,7 +120,7 @@ paths:
             schema:
               $ref: '#/components/schemas/OperationStateUpdateRequest'
       responses:
-        '200':
+        '202':
           description: 'State update accepted.'
           content:
             application/json:
@@ -153,8 +153,14 @@ components:
   schemas:
     OperationState:
       type: string
+      enum: ['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday']
+      example: 'presence'
+      description: 'Global operation state. Values: off (0), presence (1), away (2), standby (3), scheduled (4), party (5), holiday (6)'
+    ZoneState:
+      type: string
       enum: ['off', 'presence', 'away', 'standby', 'scheduled']
       example: 'presence'
+      description: 'Zone operation state. Values: off (0), presence (1), away (2), standby (3), scheduled (4)'
     BaseInfo:
       type: object
       properties:
@@ -187,10 +193,6 @@ components:
     Zone:
       type: object
       properties:
-        base:
-          $ref: '#/components/schemas/BaseInfo'
-        zone:
-          $ref: '#/components/schemas/ZoneInfo'
         baseId:
           type: integer
           example: 1
@@ -208,18 +210,22 @@ components:
           example: "Living Room"
           description: "Human-readable label for the zone"
         state:
-          $ref: '#/components/schemas/OperationState'
+          $ref: '#/components/schemas/ZoneState'
         temperature:
-          $ref: '#/components/schemas/Temperature'
+          type: number
+          format: float
+          example: 21.5
+          description: "Current temperature"
         setpoint:
-          $ref: '#/components/schemas/Temperature'
+          type: number
+          format: float
+          example: 22.5
           nullable: true
-        relative_humidity:
+          description: "Temperature setpoint"
+        relativeHumidity:
           type: integer
           example: 45
-        address:
-          type: integer
-          example: 1300
+          description: "Relative humidity percentage"
     ZonesListResponse:
       type: object
       properties:
@@ -227,14 +233,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Zone'
-        count:
+        total:
           type: integer
           example: 8
+          description: "Total number of zones"
     ZoneUpdateRequest:
       type: object
       properties:
         state:
-          $ref: '#/components/schemas/OperationState'
+          $ref: '#/components/schemas/ZoneState'
         setpoint:
           type: number
           format: float
@@ -244,21 +251,16 @@ components:
     ZoneUpdateResponse:
       type: object
       properties:
-        base:
-          $ref: '#/components/schemas/BaseInfo'
-        zone:
-          $ref: '#/components/schemas/ZoneInfo'
-        updated:
-          type: object
-          properties:
-            state:
-              type: string
-            setpoint:
-              type: number
+        message:
+          type: string
+          example: "Zone updated successfully"
+          description: "Success message"
+        dpt_9001_setpoint:
+          type: integer
+          nullable: true
+          description: "DPT 9001 encoded setpoint value (if setpoint was updated)"
       required:
-        - base
-        - zone
-        - updated
+        - message
     OperationStateResponse:
       type: object
       properties:
@@ -274,9 +276,6 @@ components:
     OperationStateUpdateResponse:
       type: object
       properties:
-        status:
-          type: string
-          example: 'success'
         state:
           $ref: '#/components/schemas/OperationState'
     HealthResponse:

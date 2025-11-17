@@ -116,8 +116,8 @@ def update_zone_data(self, base_id: int, zone_id: int, request: ZoneRequest):
 ### Operation Mode Management (`/api/mode`)
 
 **Global System Control:**
-- Operation mode (Auto, Heating, Cooling, Manual)
-- Operation state (Normal, Reduced, Standby, Scheduled, Party, Holiday)
+- Operation mode (Auto, Heating, Cooling, Manual Heating, Manual Cooling)
+- Operation state (Off, Presence, Away, Standby, Scheduled, Party, Holiday)
 - Direct Modbus register manipulation for system-wide control
 
 ### Device Management (`/api/devices`)
