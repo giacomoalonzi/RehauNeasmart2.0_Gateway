@@ -53,7 +53,7 @@ jobs:
 
   build:
     name: Build and Push Docker Image
-    needs: test
+    needs: [test, extract-version]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -85,7 +85,9 @@ jobs:
           context: .
           push: true
           platforms: linux/arm64,linux/amd64
-          tags: giacomoalonzi/rehauneasmart_2_0_gateway:latest
+          tags: |
+            giacomoalonzi/rehauneasmart_2_0_gateway:${{ env.fallback_version }}
+            giacomoalonzi/rehauneasmart_2_0_gateway:latest
 
       - name: Post build cleanup
         run: docker system prune -f
