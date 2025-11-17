@@ -7,4 +7,4 @@ venv/
 old_main.py
 config
 old_*
-*.db.*
+*.db.backup
