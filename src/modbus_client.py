@@ -435,20 +435,44 @@ def get_client(gateway_host: Optional[str] = None, gateway_port: Optional[int] =
     Get or create the global Neasmart Modbus client instance.
     Configuration values are read from unified config.json by default.
     
+    The client instance is reused across operations to maintain connection state and error tracking.
+    Only recreate when configuration actually changes, not on every operation.
+    
     Args:
         gateway_host: IP address of Waveshare gateway (optional, uses config if not provided)
         gateway_port: Port of Waveshare gateway (optional, uses config if not provided)
         neasmart_slave_id: Modbus slave ID of Neasmart device (optional, uses config if not provided)
-        force_recreate: Force recreation of client instance (useful when config changes)
+        force_recreate: Force recreation of client instance (only use when config changes)
         
     Returns:
-        NeasmartModbusClient: Global client instance
+        NeasmartModbusClient: Global client instance (reused across calls)
     """
     global _client
-    if _client is None or force_recreate:
+    
+    # Check if we need to recreate the client
+    should_recreate = False
+    if _client is None:
+        should_recreate = True
+    elif force_recreate:
+        # Only recreate if configuration parameters are actually different
+        gateway_config = config_manager.get_gateway_config()
+        new_host = gateway_host or gateway_config.get("host", "127.0.0.1")
+        new_port = gateway_port or gateway_config.get("port", 502)
+        new_slave_id = neasmart_slave_id or gateway_config.get("neasmart_slave_id", 240)
+        
+        if (_client.gateway_host != new_host or 
+            _client.gateway_port != new_port or 
+            _client.neasmart_slave_id != new_slave_id):
+            should_recreate = True
+            _logger.info("Configuration changed, recreating Modbus client")
+        else:
+            _logger.debug("Configuration unchanged, reusing existing Modbus client")
+    
+    if should_recreate:
         # Preserve error tracking state when recreating to maintain fallback mechanism
         preserved_consecutive_errors = 0
         preserved_last_error_time = 0
+        old_client = None
         if _client is not None:
             _logger.info("Recreating Modbus client due to configuration change")
             # Preserve error tracking state to maintain fallback mechanism
@@ -456,10 +480,47 @@ def get_client(gateway_host: Optional[str] = None, gateway_port: Optional[int] =
             preserved_last_error_time = _client.last_error_time
             if preserved_consecutive_errors > 0:
                 _logger.info(f"Preserving error tracking state: {preserved_consecutive_errors} consecutive errors")
+            # Store reference to old client for cleanup
+            old_client = _client
+            _client = None
+        
+        # Create new client instance
         _client = NeasmartModbusClient(gateway_host, gateway_port, neasmart_slave_id)
         # Restore preserved error tracking state
         if preserved_consecutive_errors > 0:
             _client.consecutive_errors = preserved_consecutive_errors
             _client.last_error_time = preserved_last_error_time
+        
+        # Properly disconnect old client to prevent connection leaks
+        if old_client is not None:
+            try:
+                # Close the connection synchronously if possible
+                if old_client.client is not None:
+                    try:
+                        # Try synchronous close first (most AsyncModbusTcpClient implementations support this)
+                        old_client.client.close()
+                    except Exception:
+                        # If synchronous close fails, try async disconnect
+                        try:
+                            loop = asyncio.get_event_loop()
+                            if loop.is_running():
+                                # Schedule async disconnect if loop is running
+                                asyncio.create_task(old_client.disconnect())
+                            else:
+                                # Run disconnect synchronously if loop exists but isn't running
+                                loop.run_until_complete(old_client.disconnect())
+                        except (RuntimeError, Exception):
+                            # No event loop or disconnect failed, force cleanup
+                            pass
+                # Mark as disconnected
+                old_client.connected = False
+                old_client.client = None
+                _logger.debug("Old Modbus client disconnected and cleaned up")
+            except Exception as e:
+                _logger.warning(f"Error disconnecting old Modbus client during recreation: {e}")
+                # Force cleanup even if disconnect fails
+                old_client.connected = False
+                old_client.client = None
+    
     return _client
 
