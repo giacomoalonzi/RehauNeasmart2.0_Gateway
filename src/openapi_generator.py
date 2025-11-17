@@ -15,6 +15,11 @@ from flask import Flask
 from marshmallow import Schema, fields
 
 
+class OperationModeSchema(Schema):
+    """Schema for operation mode enum."""
+    mode = fields.Str(enum=['auto', 'heating', 'cooling', 'manual heating', 'manual cooling'])
+
+
 class OperationStateSchema(Schema):
     """Schema for operation state enum."""
     state = fields.Str(enum=['off', 'presence', 'away', 'standby', 'scheduled', 'party', 'holiday'])
@@ -70,6 +75,21 @@ class ZoneUpdateRequestSchema(Schema):
 class ZoneUpdateResponseSchema(Schema):
     """Schema for zone update response."""
     message = fields.Str(example="Zone updated successfully", description="Success message")
+
+
+class OperationModeResponseSchema(Schema):
+    """Schema for operation mode response."""
+    mode = fields.Str(enum=['auto', 'heating', 'cooling', 'manual heating', 'manual cooling'], description="Current operation mode")
+
+
+class OperationModeUpdateRequestSchema(Schema):
+    """Schema for operation mode update request."""
+    mode = fields.Str(enum=['auto', 'heating', 'cooling', 'manual heating', 'manual cooling'], required=True, description="Operation mode")
+
+
+class OperationModeUpdateResponseSchema(Schema):
+    """Schema for operation mode update response."""
+    mode = fields.Str(enum=['auto', 'heating', 'cooling', 'manual heating', 'manual cooling'], description="Updated operation mode")
 
 
 class OperationStateResponseSchema(Schema):
@@ -157,6 +177,7 @@ def create_openapi_spec(app: Flask) -> APISpec:
     )
     
     # Register schemas
+    spec.components.schema('OperationMode', schema=OperationModeSchema)
     spec.components.schema('OperationState', schema=OperationStateSchema)
     spec.components.schema('ZoneState', schema=ZoneStateSchema)
     spec.components.schema('BaseInfo', schema=BaseInfoSchema)
@@ -166,6 +187,9 @@ def create_openapi_spec(app: Flask) -> APISpec:
     spec.components.schema('ZonesListResponse', schema=ZonesListResponseSchema)
     spec.components.schema('ZoneUpdateRequest', schema=ZoneUpdateRequestSchema)
     spec.components.schema('ZoneUpdateResponse', schema=ZoneUpdateResponseSchema)
+    spec.components.schema('OperationModeResponse', schema=OperationModeResponseSchema)
+    spec.components.schema('OperationModeUpdateRequest', schema=OperationModeUpdateRequestSchema)
+    spec.components.schema('OperationModeUpdateResponse', schema=OperationModeUpdateResponseSchema)
     spec.components.schema('OperationStateResponse', schema=OperationStateResponseSchema)
     spec.components.schema('OperationStateUpdateRequest', schema=OperationStateUpdateRequestSchema)
     spec.components.schema('OperationStateUpdateResponse', schema=OperationStateUpdateResponseSchema)
@@ -219,7 +243,8 @@ def generate_openapi_yaml(app: Flask) -> str:
     with app.test_request_context():
         # Register all routes from blueprints
         for rule in app.url_map.iter_rules():
-            if rule.endpoint.startswith('api.'):
+            # Include endpoints from both api and api_v2 blueprints
+            if rule.endpoint.startswith('api.') or rule.endpoint.startswith('api_v2.'):
                 try:
                     view_func = app.view_functions[rule.endpoint]
                     spec.path(view=view_func)
@@ -246,7 +271,8 @@ def get_openapi_dict(app: Flask) -> dict:
     with app.test_request_context():
         # Register all routes from blueprints
         for rule in app.url_map.iter_rules():
-            if rule.endpoint.startswith('api.'):
+            # Include endpoints from both api and api_v2 blueprints
+            if rule.endpoint.startswith('api.') or rule.endpoint.startswith('api_v2.'):
                 try:
                     view_func = app.view_functions[rule.endpoint]
                     spec.path(view=view_func)

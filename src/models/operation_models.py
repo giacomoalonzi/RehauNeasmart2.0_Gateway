@@ -34,10 +34,11 @@ class OperationMode:
         Returns:
             tuple[bool, str]: (is_valid, error_message)
         """
-        if not self.mode:
+        if self.mode is None:
             return False, "missing mode key in payload"
         
         # Mode should be an integer (converted from string in from_dict)
+        # Valid range is 1-5 according to system specification
         if not isinstance(self.mode, int) or self.mode < 1 or self.mode > 5:
             return False, "invalid mode"
         

@@ -24,12 +24,78 @@ def _get_service() -> OperationService:
 
 @legacy_operation_bp.route("/mode", methods=['POST', 'GET'])
 def mode():
-    """Legacy mode endpoint returning human-readable payloads."""
+    """
+    Legacy mode endpoint returning human-readable payloads.
+    
+    ---
+    get:
+      summary: Get global operation mode
+      tags:
+        - Operation
+      description: Retrieves the current global operation mode of the system (e.g., "auto", "heating", "cooling").
+      responses:
+        '200':
+          description: Current operation mode.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationModeResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    post:
+      summary: Set global operation mode
+      tags:
+        - Operation
+      description: Sets a new global operation mode for the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationModeUpdateRequest'
+      responses:
+        '202':
+          description: Mode update accepted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    """
     service = _get_service()
 
     if request.method == 'GET':
         try:
             mode_value = service.get_mode()
+            
+            # Validate mode value before processing
+            if mode_value < 1 or mode_value > 5:
+                _logger.warning(
+                    "Invalid mode value received: %s (type: %s). "
+                    "Expected range: 1-5. This may indicate uninitialized system or Modbus communication issue.",
+                    mode_value,
+                    type(mode_value).__name__
+                )
+                error_details = {
+                    "raw_value": mode_value,
+                    "value_type": type(mode_value).__name__,
+                    "expected_range": "1-5",
+                    "valid_modes": {
+                        1: "auto",
+                        2: "heating",
+                        3: "cooling",
+                        4: "manual heating",
+                        5: "manual cooling"
+                    }
+                }
+                return current_app.response_class(
+                    response=json.dumps(ErrorResponse(
+                        f"System returned invalid mode value: {mode_value} (expected 1-5). "
+                        f"This may indicate the system is uninitialized or there is a Modbus communication issue."
+                    ).to_dict() | {"debug_info": error_details}),
+                    status=503,
+                    mimetype='application/json',
+                )
+            
             operation_mode = OperationMode(mode=mode_value)
             response_data = operation_mode.to_dict(readable=True)
             response_data = transform_api_response(response_data, to_camel=True)
@@ -39,8 +105,16 @@ def mode():
                 status=200,
                 mimetype='application/json',
             )
+        except ValueError as exc:
+            # Handle ValueError from mode_to_name conversion (e.g., mode value outside valid range)
+            _logger.warning("Invalid mode value from system: %s", exc, exc_info=True)
+            return current_app.response_class(
+                response=json.dumps(ErrorResponse(f"System returned invalid mode value: {str(exc)}").to_dict()),
+                status=503,
+                mimetype='application/json',
+            )
         except Exception as exc:
-            _logger.error("Error getting mode data: %s", exc)
+            _logger.error("Error getting mode data: %s", exc, exc_info=True)
             return current_app.response_class(
                 response=json.dumps(ErrorResponse("Internal server error").to_dict()),
                 status=500,
@@ -188,8 +262,59 @@ def state():
 
 @operation_v2_bp.route("/operation/mode", methods=['GET'])
 def mode_v2_get():
+    """
+    Get global operation mode (v2).
+    
+    ---
+    get:
+      summary: Get global operation mode
+      tags:
+        - Operation
+      description: Retrieves the current global operation mode of the system (e.g., "auto", "heating", "cooling").
+      responses:
+        '200':
+          description: Current operation mode.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationModeResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    """
     service = _get_service()
     try:
+        # Get raw value first for debugging
+        mode_value = service.get_mode()
+        
+        # Validate mode value before converting to name
+        if mode_value < 1 or mode_value > 5:
+            _logger.warning(
+                "Invalid mode value received (v2): %s (type: %s). "
+                "Expected range: 1-5. This may indicate uninitialized system or Modbus communication issue.",
+                mode_value,
+                type(mode_value).__name__
+            )
+            error_details = {
+                "raw_value": mode_value,
+                "value_type": type(mode_value).__name__,
+                "expected_range": "1-5",
+                "valid_modes": {
+                    1: "auto",
+                    2: "heating",
+                    3: "cooling",
+                    4: "manual heating",
+                    5: "manual cooling"
+                }
+            }
+            return current_app.response_class(
+                response=json.dumps(ErrorResponse(
+                    f"System returned invalid mode value: {mode_value} (expected 1-5). "
+                    f"This may indicate the system is uninitialized or there is a Modbus communication issue."
+                ).to_dict() | {"debug_info": error_details}),
+                status=503,
+                mimetype='application/json',
+            )
+        
         readable_mode = service.get_mode_name()
         payload = {'mode': readable_mode}
         payload = transform_api_response(payload, to_camel=True, allowed_keys={'mode'})
@@ -198,8 +323,16 @@ def mode_v2_get():
             status=200,
             mimetype='application/json',
         )
+    except ValueError as exc:
+        # Handle ValueError from mode_to_name conversion (e.g., mode value outside valid range)
+        _logger.warning("Invalid mode value from system (v2): %s", exc, exc_info=True)
+        return current_app.response_class(
+            response=json.dumps(ErrorResponse(f"System returned invalid mode value: {str(exc)}").to_dict()),
+            status=503,
+            mimetype='application/json',
+        )
     except Exception as exc:
-        _logger.error("Error getting mode data (v2): %s", exc)
+        _logger.error("Error getting mode data (v2): %s", exc, exc_info=True)
         return current_app.response_class(
             response=json.dumps(ErrorResponse("Internal server error").to_dict()),
             status=500,
@@ -209,6 +342,33 @@ def mode_v2_get():
 
 @operation_v2_bp.route("/operation/mode", methods=['POST'])
 def mode_v2_post():
+    """
+    Set global operation mode (v2).
+    
+    ---
+    post:
+      summary: Set global operation mode
+      tags:
+        - Operation
+      description: Sets a new global operation mode for the system.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperationModeUpdateRequest'
+      responses:
+        '202':
+          description: Mode update accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationModeUpdateResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+    """
     service = _get_service()
     try:
         payload = request.json

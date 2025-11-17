@@ -30,13 +30,53 @@ class OperationService:
 
     # Mode helpers --------------------------------------------------
     def get_mode(self) -> int:
-        mode_value = self._context[self._slave_id].getValues(
-            const.READ_HR_CODE,
-            const.GLOBAL_OP_MODE_ADDR,
-            count=1,
-        )[0]
-        _logger.debug("Fetched operation mode value %s", mode_value)
-        return mode_value
+        """Get operation mode from Modbus.
+        
+        Returns:
+            int: Operation mode value (should be 1-5 according to spec)
+        """
+        try:
+            raw_response = self._context[self._slave_id].getValues(
+                const.READ_HR_CODE,
+                const.GLOBAL_OP_MODE_ADDR,
+                count=1,
+            )
+            mode_value = raw_response[0]
+            
+            # Detailed logging for debugging
+            _logger.info(
+                "Modbus read - Slave ID: %s, Address: %s, Code: %s, "
+                "Raw response: %s (type: %s), Extracted value: %s (type: %s)",
+                self._slave_id,
+                const.GLOBAL_OP_MODE_ADDR,
+                const.READ_HR_CODE,
+                raw_response,
+                type(raw_response).__name__,
+                mode_value,
+                type(mode_value).__name__
+            )
+            
+            # Warn if value is outside expected range
+            if mode_value < 1 or mode_value > 5:
+                _logger.warning(
+                    "Received invalid mode value %s from Modbus (expected 1-5). "
+                    "Slave ID: %s, Address: %s, Full response: %s",
+                    mode_value,
+                    self._slave_id,
+                    const.GLOBAL_OP_MODE_ADDR,
+                    raw_response
+                )
+            
+            return mode_value
+        except Exception as e:
+            _logger.error(
+                "Error reading mode from Modbus - Slave ID: %s, Address: %s, Error: %s",
+                self._slave_id,
+                const.GLOBAL_OP_MODE_ADDR,
+                e,
+                exc_info=True
+            )
+            raise
 
     def get_mode_name(self) -> str:
         return state_converter.mode_to_name(self.get_mode())
