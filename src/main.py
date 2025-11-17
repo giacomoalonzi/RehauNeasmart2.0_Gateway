@@ -25,6 +25,12 @@ logging.basicConfig(
     ]
 )
 
+# Reduce verbosity of modbus_monitor logs (only show WARNING and above)
+logging.getLogger('modbus_monitor').setLevel(logging.WARNING)
+
+# Reduce verbosity of modbus_server logs (only show WARNING and above)
+logging.getLogger('modbus_server').setLevel(logging.WARNING)
+
 _logger = logging.getLogger(__name__)
 
 
