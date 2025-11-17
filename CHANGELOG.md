@@ -9,12 +9,6 @@
   - Introduced data models layer (`models/` directory)
   - Reduced main file complexity by 89% (from 448 to ~50 lines)
 
-- **API Versioning**: Implemented versioned API endpoints
-  - Added `/api/v1` namespace for legacy endpoints (backward compatible)
-  - Added `/api/v2` namespace for enhanced endpoints with human-readable values
-  - New v2 endpoints support string-based state/mode values (e.g., `"presence"`, `"auto"`) instead of raw integers
-  - Maintained full backward compatibility with existing v1 endpoints
-
 - **OpenAPI Documentation**: Comprehensive API documentation system
   - Automatic OpenAPI 3.0 specification generation from Flask routes
   - Interactive Swagger UI available at `/api/docs`
@@ -33,7 +27,7 @@
   - Operation states: `off`, `presence`, `away`, `standby`, `scheduled`, `party`, `holiday`
   - Operation modes: `auto`, `heating`, `cooling`, `manual_heating`, `manual_cooling`
   - Zone states: `off`, `presence`, `away`, `standby`, `scheduled`
-  - v2 API endpoints accept both string and integer values
+  - API endpoints support human-readable string values for states and modes
 
 - **Enhanced Configuration Management**: Improved configuration system
   - Centralized configuration loading (`config.py`)
@@ -70,7 +64,7 @@
 
 - **Testing Infrastructure**: Improved test coverage
   - Unit tests for state conversion utilities
-  - Integration tests for API endpoints (v1 and v2)
+  - Integration tests for API endpoints
   - Mock Modbus context for deterministic testing
   - Test fixtures and utilities
 
@@ -107,8 +101,8 @@
 
 - **Python Version**: Compatible with Python 3.9+
 - **Dependencies**: Updated requirements with new packages for OpenAPI support
-- **Backward Compatibility**: All existing endpoints remain functional under `/api/v1`
-- **Migration Path**: Clear migration guide from v1 to v2 endpoints
+- **API Base Path**: All endpoints are available under `/api/` namespace
+- **Backward Compatibility**: All existing endpoints remain functional
 
 ---
 
