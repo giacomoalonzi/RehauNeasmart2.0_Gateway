@@ -162,7 +162,7 @@ Update zone parameters.
 - `"party"` (5): The zone is in party mode.
 - `"holiday"` (6): The zone is in long-term away mode.
 
-**Note:** The API accepts both human-readable strings (e.g., "presence") and legacy integer values (e.g., 1) for backward compatibility.
+**Note:** The API accepts only human-readable strings (e.g., "presence"). Integer values are not accepted.
 
 **Response:**
 
@@ -244,7 +244,7 @@ Set global operation mode.
 }
 ```
 
-**Note:** The API accepts both human-readable strings (e.g., "heating") and legacy integer values (e.g., 2) for backward compatibility.
+**Note:** The API accepts only human-readable strings (e.g., "heating"). Integer values are not accepted.
 
 #### GET /state (Legacy v1)
 
@@ -280,7 +280,7 @@ Set global operation state.
 }
 ```
 
-**Note:** The API accepts both human-readable strings (e.g., "normal") and legacy integer values (e.g., 1) for backward compatibility.
+**Note:** The API accepts only human-readable strings (e.g., "normal"). Integer values are not accepted.
 
 #### GET /api/v2/operation/mode
 
@@ -296,7 +296,7 @@ Return human-readable mode values.
 
 #### POST /api/v2/operation/mode
 
-Accept human-readable mode values (strings) or legacy integers.
+Accept only human-readable mode values (strings). Integer values are not accepted.
 
 **Request Body:**
 
@@ -328,7 +328,7 @@ Return human-readable state values.
 
 #### POST /api/v2/operation/state
 
-Accept human-readable state values (strings) or legacy integers.
+Accept only human-readable state values (strings). Integer values are not accepted.
 
 **Request Body:**
 
@@ -343,16 +343,6 @@ Accept human-readable state values (strings) or legacy integers.
 ```json
 {
   "state": "standby"
-}
-```
-
-Set global operation state.
-
-**Request Body:**
-
-```json
-{
-  "state": 1
 }
 ```
 
@@ -469,7 +459,7 @@ curl http://localhost:5000/api/v1/zones/1/1
 # Update zone state
 curl -X POST http://localhost:5000/api/v1/zones/1/1 \
   -H "Content-Type: application/json" \
-  -d '{"state": 3, "setpoint": 22.0}'
+  -d '{"state": "standby", "setpoint": 22.0}'
 ```
 
 ### Home Assistant REST Integration

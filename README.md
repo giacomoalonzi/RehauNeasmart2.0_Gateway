@@ -244,7 +244,7 @@ curl -X POST http://localhost:5001/api/state \
 
 ### API Response Format
 
-All API responses use **camelCase** field naming (e.g., `relativeHumidity`, `outsideTemperature`). State and mode values are returned as human-readable strings (e.g., `"presence"`, `"auto"`) instead of integers.
+All API responses use **camelCase** field naming (e.g., `relativeHumidity`, `outsideTemperature`). State and mode values are returned as human-readable strings (e.g., `"presence"`, `"auto"`) instead of integers. **API requests must also use human-readable strings for state and mode values** - integer values are not accepted.
 
 **Example zone response**:
 ```json
