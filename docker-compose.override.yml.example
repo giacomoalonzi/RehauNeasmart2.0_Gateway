@@ -1,0 +1,25 @@
+# Example override file for docker-compose.yml
+# Copy this file to docker-compose.override.yml and customize the paths
+# 
+# Usage:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   # Edit docker-compose.override.yml with your paths
+#   docker-compose up -d
+
+version: '3.8'
+
+services:
+  rehau-gateway:
+    volumes:
+      # Example: Mount config from external absolute path
+      # - /path/to/your/config:/app/config:ro
+      
+      # Example: Mount data from external absolute path
+      # - /path/to/your/data:/app/data
+      
+      # Example: Mount config from external relative path
+      # - ../external-config:/app/config:ro
+      
+      # Example: Mount data from external relative path
+      # - ../external-data:/app/data
+

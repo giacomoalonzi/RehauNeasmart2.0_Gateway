@@ -11,10 +11,14 @@ services:
       - "5000:5000"  # Flask REST API
       - "502:502"    # Modbus TCP
     volumes:
-      # Persistent data storage
-      - ./data:/data
-      # Optional: mount config file
-      # - ./config/options.json:/data/options.json:ro
+      # Config directory - mount from external path
+      # Default: ./config (relative to docker-compose.yml)
+      # Override: Set CONFIG_PATH environment variable or use docker-compose.override.yml
+      - ${CONFIG_PATH:-./config}:/app/config:ro
+      # Data directory - mount from external path
+      # Default: ./data (relative to docker-compose.yml)
+      # Override: Set DATA_PATH environment variable or use docker-compose.override.yml
+      - ${DATA_PATH:-./data}:/app/data
     environment:
       - PYTHONUNBUFFERED=1
       # Optional: override default config via environment variables
