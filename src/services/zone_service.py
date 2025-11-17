@@ -163,7 +163,7 @@ class ZoneService:
             write_through_success = False
             write_through_verified = False
             try:
-                client = get_client(force_recreate=True)  # Force recreation to pick up new config
+                client = get_client()  # Get client instance (preserves error tracking state)
                 success, msg = asyncio.run(
                     client.write_zone_state(base_id, zone_id, request.state[0])
                 )
@@ -214,7 +214,7 @@ class ZoneService:
             write_through_success = False
             write_through_verified = False
             try:
-                client = get_client(force_recreate=True)  # Force recreation to pick up new config
+                client = get_client()  # Get client instance (preserves error tracking state)
                 success, msg = asyncio.run(
                     client.write_zone_setpoint(base_id, zone_id, dpt_9001_setpoint[0])
                 )

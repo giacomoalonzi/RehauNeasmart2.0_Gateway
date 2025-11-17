@@ -446,8 +446,20 @@ def get_client(gateway_host: Optional[str] = None, gateway_port: Optional[int] =
     """
     global _client
     if _client is None or force_recreate:
+        # Preserve error tracking state when recreating to maintain fallback mechanism
+        preserved_consecutive_errors = 0
+        preserved_last_error_time = 0
         if _client is not None:
             _logger.info("Recreating Modbus client due to configuration change")
+            # Preserve error tracking state to maintain fallback mechanism
+            preserved_consecutive_errors = _client.consecutive_errors
+            preserved_last_error_time = _client.last_error_time
+            if preserved_consecutive_errors > 0:
+                _logger.info(f"Preserving error tracking state: {preserved_consecutive_errors} consecutive errors")
         _client = NeasmartModbusClient(gateway_host, gateway_port, neasmart_slave_id)
+        # Restore preserved error tracking state
+        if preserved_consecutive_errors > 0:
+            _client.consecutive_errors = preserved_consecutive_errors
+            _client.last_error_time = preserved_last_error_time
     return _client
 
