@@ -16,10 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY src /app/src
 
-# Copy the data directory (for persistent storage like registers.db)
-COPY data /app/data
-
-
 # Healthcheck for the container
 HEALTHCHECK --interval=2m --timeout=3s \
     CMD curl -f http://localhost:5000/health || exit 1

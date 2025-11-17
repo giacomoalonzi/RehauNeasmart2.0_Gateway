@@ -44,6 +44,7 @@ data/*.log
 # Database files (will be created at runtime)
 data/*.db
 data/*.db-journal
+data/*.db.*
 
 # Config files (should be mounted as volumes)
 config/
