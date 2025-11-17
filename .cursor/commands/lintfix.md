@@ -102,14 +102,14 @@ The command respects these project conventions:
 
 ## Dependencies
 
-All linting tools should be installed via `src/requirements.txt` or development dependencies:
+All linting tools should be installed via `requirements.txt` or development dependencies:
 
 ```bash
-pip install -r src/requirements.txt
+pip install -r requirements.txt
 pip install black ruff flake8 mypy isort pytest pytest-cov
 ```
 
-See `src/requirements.txt` for the complete list of project dependencies.
+See `requirements.txt` for the complete list of project dependencies.
 
 ## CI Integration
 
