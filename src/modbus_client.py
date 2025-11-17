@@ -15,6 +15,7 @@ from typing import Optional, Tuple
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 import const
+from config import config_manager
 
 _logger = logging.getLogger(__name__)
 
@@ -37,16 +38,23 @@ class NeasmartModbusClient:
             gateway_port: Port of Waveshare gateway (defaults to config file)
             neasmart_slave_id: Modbus slave ID of the Neasmart device (defaults to config file)
         """
-        # Load gateway configuration first
-        self.config = self._load_gateway_config()
+        # Load gateway and fallback configuration from unified config
+        gateway_config = config_manager.get_gateway_config()
+        fallback_config = config_manager.get_fallback_config()
+        
+        # Store config for later use
+        self.config = {
+            "gateway": gateway_config,
+            "fallback": fallback_config
+        }
         
         # Use provided values or fall back to config
-        self.gateway_host = gateway_host or self.config.get("gateway", {}).get("host", "127.0.0.1")
-        self.gateway_port = gateway_port or self.config.get("gateway", {}).get("port", 502)
-        self.neasmart_slave_id = neasmart_slave_id or self.config.get("gateway", {}).get("neasmart_slave_id", 240)
-        self.timeout = self.config.get("gateway", {}).get("timeout", 15)
-        self.retry_delay = self.config.get("gateway", {}).get("retry_delay", 3)
-        self.max_retries = self.config.get("gateway", {}).get("retry_attempts", 3)
+        self.gateway_host = gateway_host or gateway_config.get("host", "127.0.0.1")
+        self.gateway_port = gateway_port or gateway_config.get("port", 502)
+        self.neasmart_slave_id = neasmart_slave_id or gateway_config.get("neasmart_slave_id", 240)
+        self.timeout = gateway_config.get("timeout", 15)
+        self.retry_delay = gateway_config.get("retry_delay", 3)
+        self.max_retries = gateway_config.get("retry_attempts", 3)
         
         _logger.info(f"Modbus client configured: timeout={self.timeout}s, retry_delay={self.retry_delay}s, max_retries={self.max_retries}")
         
@@ -55,19 +63,6 @@ class NeasmartModbusClient:
         self._connect_lock = asyncio.Lock()
         self.consecutive_errors = 0
         self.last_error_time = 0
-    
-    def _load_gateway_config(self) -> dict:
-        """Load gateway configuration from config file."""
-        config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'gateway.json')
-        try:
-            with open(config_path, 'r') as f:
-                return json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            _logger.warning(f"Could not load gateway config: {e}. Using defaults.")
-            return {
-                "gateway": {"enabled": True},
-                "fallback": {"disable_write_through_on_error": False, "max_consecutive_errors": 3}
-            }
     
     def is_gateway_enabled(self) -> bool:
         """Check if gateway write-through is enabled."""
@@ -438,7 +433,7 @@ def get_client(gateway_host: Optional[str] = None, gateway_port: Optional[int] =
                neasmart_slave_id: Optional[int] = None, force_recreate: bool = False) -> NeasmartModbusClient:
     """
     Get or create the global Neasmart Modbus client instance.
-    Configuration values are read from config/gateway.json by default.
+    Configuration values are read from unified config.json by default.
     
     Args:
         gateway_host: IP address of Waveshare gateway (optional, uses config if not provided)

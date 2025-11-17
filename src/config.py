@@ -33,7 +33,7 @@ class ServerConfig:
 
 
 class ConfigManager:
-    """Configuration manager for loading and managing application settings from config/ directory."""
+    """Configuration manager for loading and managing application settings from unified config.json."""
     
     def __init__(self, config_dir: str = "./config"):
         """
@@ -44,7 +44,7 @@ class ConfigManager:
         """
         self.config_dir = config_dir
         self._config = None
-        self._zones_config = None
+        self._full_config = None
     
     def _load_json_file(self, file_path: str) -> Dict[str, Any]:
         """Load and parse a JSON configuration file."""
@@ -57,23 +57,20 @@ class ConfigManager:
     
     def load_config(self) -> ServerConfig:
         """
-        Load configuration from config/ directory.
+        Load configuration from unified config.json file.
         
         Returns:
             ServerConfig: Loaded configuration object
         """
         try:
-            # Load server configuration
-            server_config_path = os.path.join(self.config_dir, "server.json")
-            server_data = self._load_json_file(server_config_path)
-            
-            # Load zones configuration
-            zones_config_path = os.path.join(self.config_dir, "zones.json")
-            zones_data = self._load_json_file(zones_config_path)
+            # Load unified configuration
+            config_path = os.path.join(self.config_dir, "config.json")
+            self._full_config = self._load_json_file(config_path)
             
             # Extract server settings
-            server_info = server_data.get('server', {})
-            modbus_info = server_data.get('modbus', {})
+            server_info = self._full_config.get('server', {})
+            modbus_info = self._full_config.get('modbus', {})
+            zones_info = self._full_config.get('zones', {})
             
             # Build configuration data
             config_data = {
@@ -82,17 +79,17 @@ class ConfigManager:
                 'server_type': server_info.get('type', 'tcp'),
                 'slave_id': modbus_info.get('slave_id', 240),
                 'server_port': server_info.get('server_port', 5001),
-                'structures': zones_data.get('structures', [])
+                'structures': zones_info.get('structures', [])
             }
             
             self._config = ServerConfig(**config_data)
-            self._zones_config = zones_data
-            _logger.info(f"Configuration loaded from {self.config_dir}")
+            _logger.info(f"Configuration loaded from {config_path}")
             return self._config
             
         except Exception as e:
             _logger.error(f"Error loading configuration: {e}")
             _logger.info("Using default configuration")
+            self._full_config = {}
             return ServerConfig()
     
     def get_config(self) -> ServerConfig:
@@ -113,54 +110,164 @@ class ConfigManager:
         Returns:
             Dict[str, Any]: Zones configuration
         """
-        if self._zones_config is None:
+        if self._full_config is None:
             self.load_config()
-        return self._zones_config or {}
+        return self._full_config.get('zones', {})
+    
+    def get_api_config(self) -> Dict[str, Any]:
+        """
+        Get API configuration.
+        
+        Returns:
+            Dict[str, Any]: API configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('api', {})
+    
+    def get_database_config(self) -> Dict[str, Any]:
+        """
+        Get database configuration.
+        
+        Returns:
+            Dict[str, Any]: Database configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('database', {})
+    
+    def get_logging_config(self) -> Dict[str, Any]:
+        """
+        Get logging configuration.
+        
+        Returns:
+            Dict[str, Any]: Logging configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('logging', {})
+    
+    def get_features_config(self) -> Dict[str, Any]:
+        """
+        Get features configuration.
+        
+        Returns:
+            Dict[str, Any]: Features configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('features', {})
+    
+    def get_advanced_config(self) -> Dict[str, Any]:
+        """
+        Get advanced configuration.
+        
+        Returns:
+            Dict[str, Any]: Advanced configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('advanced', {})
+    
+    def get_gateway_config(self) -> Dict[str, Any]:
+        """
+        Get gateway configuration.
+        
+        Returns:
+            Dict[str, Any]: Gateway configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('gateway', {})
+    
+    def get_fallback_config(self) -> Dict[str, Any]:
+        """
+        Get fallback configuration.
+        
+        Returns:
+            Dict[str, Any]: Fallback configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.get('fallback', {})
+    
+    def get_full_config(self) -> Dict[str, Any]:
+        """
+        Get the full configuration dictionary.
+        
+        Returns:
+            Dict[str, Any]: Full configuration
+        """
+        if self._full_config is None:
+            self.load_config()
+        return self._full_config.copy() if self._full_config else {}
     
     def save_config(self, config: ServerConfig) -> None:
         """
-        Save configuration to config/ directory.
+        Save configuration to unified config.json file.
         
         Args:
             config (ServerConfig): Configuration to save
         """
         try:
-            # Save server configuration
-            server_config_path = os.path.join(self.config_dir, "server.json")
-            server_data = self._load_json_file(server_config_path)
+            # Load current full config
+            config_path = os.path.join(self.config_dir, "config.json")
+            full_config = self.get_full_config()
             
             # Update server settings
-            if 'server' not in server_data:
-                server_data['server'] = {}
+            if 'server' not in full_config:
+                full_config['server'] = {}
             
-            server_data['server'].update({
+            full_config['server'].update({
                 'address': config.listen_address,
                 'port': config.listen_port,
                 'type': config.server_type,
                 'server_port': config.server_port
             })
             
-            if 'modbus' not in server_data:
-                server_data['modbus'] = {}
+            # Update modbus settings
+            if 'modbus' not in full_config:
+                full_config['modbus'] = {}
             
-            server_data['modbus']['slave_id'] = config.slave_id
+            full_config['modbus']['slave_id'] = config.slave_id
             
-            with open(server_config_path, 'w') as f:
-                json.dump(server_data, f, indent=2)
+            # Update zones settings
+            if 'zones' not in full_config:
+                full_config['zones'] = {}
             
-            # Save zones configuration
-            zones_config_path = os.path.join(self.config_dir, "zones.json")
-            zones_data = {
-                'structures': config.structures
-            }
+            full_config['zones']['structures'] = config.structures
             
-            with open(zones_config_path, 'w') as f:
-                json.dump(zones_data, f, indent=2)
+            # Save unified configuration
+            with open(config_path, 'w') as f:
+                json.dump(full_config, f, indent=2)
             
-            _logger.info(f"Configuration saved to {self.config_dir}")
+            # Reload to refresh internal state
+            self._full_config = full_config
+            _logger.info(f"Configuration saved to {config_path}")
             
         except Exception as e:
             _logger.error(f"Error saving configuration: {e}")
+            raise
+    
+    def save_full_config(self, full_config: Dict[str, Any]) -> None:
+        """
+        Save the full configuration dictionary.
+        
+        Args:
+            full_config (Dict[str, Any]): Full configuration to save
+        """
+        try:
+            config_path = os.path.join(self.config_dir, "config.json")
+            with open(config_path, 'w') as f:
+                json.dump(full_config, f, indent=2)
+            
+            # Reload to refresh internal state
+            self._full_config = full_config
+            self._config = None  # Force reload of ServerConfig
+            _logger.info(f"Full configuration saved to {config_path}")
+            
+        except Exception as e:
+            _logger.error(f"Error saving full configuration: {e}")
             raise
 
 

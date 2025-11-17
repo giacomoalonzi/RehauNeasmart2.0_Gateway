@@ -7,29 +7,28 @@ This script allows you to enable/disable the Waveshare gateway write-through
 and check the current status.
 """
 
-import json
 import os
 import sys
 import argparse
 
+# Add src directory to path to import config_manager
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+from config import config_manager
+
 
 def load_config():
-    """Load gateway configuration."""
-    config_path = os.path.join(os.path.dirname(__file__), 'config', 'gateway.json')
+    """Load unified configuration."""
     try:
-        with open(config_path, 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
+        return config_manager.get_full_config()
+    except Exception as e:
         print(f"Error loading config: {e}")
         return None
 
 
 def save_config(config):
-    """Save gateway configuration."""
-    config_path = os.path.join(os.path.dirname(__file__), 'config', 'gateway.json')
+    """Save unified configuration."""
     try:
-        with open(config_path, 'w') as f:
-            json.dump(config, f, indent=2)
+        config_manager.save_full_config(config)
         return True
     except Exception as e:
         print(f"Error saving config: {e}")
