@@ -276,27 +276,93 @@ docker run -d \
 
 ### Docker Compose
 
-Create a `docker-compose.yml`:
+The project includes a `docker-compose.yml` file for easy deployment. You can use it as-is or customize it for your needs.
 
+#### Basic Usage
+
+1. **Prepare your configuration**:
+   ```bash
+   cp config/example/config.json.example config/config.json
+   # Edit config/config.json with your settings
+   ```
+
+2. **Start the service**:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Check logs**:
+   ```bash
+   docker-compose logs -f rehau-gateway
+   ```
+
+#### Customizing Paths
+
+The `docker-compose.yml` supports mounting config and data directories from external paths:
+
+**Method 1: Using environment variables**
+```bash
+CONFIG_PATH=/path/to/your/config DATA_PATH=/path/to/your/data docker-compose up -d
+```
+
+**Method 2: Using override file**
+
+Create a `docker-compose.override.yml` file:
 ```yaml
 version: '3.8'
 
 services:
-  gateway:
-    build: .
-    container_name: rehauneasmart-gateway
-    ports:
-      - "5001:5001"
-      - "502:502"
+  rehau-gateway:
     volumes:
-      - ./config:/app/config
-      - ./data:/app/data
-    restart: unless-stopped
+      - /absolute/path/to/config:/app/config:ro
+      - /absolute/path/to/data:/app/data
 ```
 
-Run with:
+Then run:
 ```bash
 docker-compose up -d
+```
+
+**Method 3: Edit docker-compose.yml directly**
+
+You can modify the volume paths directly in `docker-compose.yml`:
+```yaml
+volumes:
+  - /your/config/path:/app/config:ro
+  - /your/data/path:/app/data
+```
+
+#### Port Configuration
+
+By default, the following ports are exposed:
+- **5000**: Flask REST API (check your `config.json` for the actual API port)
+- **502**: Modbus TCP server
+
+To change ports, modify the `ports` section in `docker-compose.yml`:
+```yaml
+ports:
+  - "8080:5000"  # Map host port 8080 to container port 5000
+  - "502:502"    # Modbus TCP
+```
+
+#### Serial Modbus Support
+
+For Modbus Serial (RS485), uncomment and configure the `devices` section:
+```yaml
+devices:
+  - /dev/ttyUSB0:/dev/ttyUSB0  # Adjust to your serial device
+```
+
+#### Health Check
+
+The service includes a health check that verifies the API is responding. You can check the health status:
+```bash
+docker-compose ps
+```
+
+Or manually:
+```bash
+curl http://localhost:5000/health
 ```
 
 ---
