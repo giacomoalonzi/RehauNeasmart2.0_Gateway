@@ -114,61 +114,6 @@ class ConfigManager:
             self.load_config()
         return self._full_config.get('zones', {})
     
-    def get_api_config(self) -> Dict[str, Any]:
-        """
-        Get API configuration.
-        
-        Returns:
-            Dict[str, Any]: API configuration
-        """
-        if self._full_config is None:
-            self.load_config()
-        return self._full_config.get('api', {})
-    
-    def get_database_config(self) -> Dict[str, Any]:
-        """
-        Get database configuration.
-        
-        Returns:
-            Dict[str, Any]: Database configuration
-        """
-        if self._full_config is None:
-            self.load_config()
-        return self._full_config.get('database', {})
-    
-    def get_logging_config(self) -> Dict[str, Any]:
-        """
-        Get logging configuration.
-        
-        Returns:
-            Dict[str, Any]: Logging configuration
-        """
-        if self._full_config is None:
-            self.load_config()
-        return self._full_config.get('logging', {})
-    
-    def get_features_config(self) -> Dict[str, Any]:
-        """
-        Get features configuration.
-        
-        Returns:
-            Dict[str, Any]: Features configuration
-        """
-        if self._full_config is None:
-            self.load_config()
-        return self._full_config.get('features', {})
-    
-    def get_advanced_config(self) -> Dict[str, Any]:
-        """
-        Get advanced configuration.
-        
-        Returns:
-            Dict[str, Any]: Advanced configuration
-        """
-        if self._full_config is None:
-            self.load_config()
-        return self._full_config.get('advanced', {})
-    
     def get_gateway_config(self) -> Dict[str, Any]:
         """
         Get gateway configuration.

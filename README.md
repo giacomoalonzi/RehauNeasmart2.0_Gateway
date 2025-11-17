@@ -79,57 +79,39 @@ The unified configuration file contains all application settings organized into 
 
 ```json
 {
-  "// SERVER & MODBUS CONFIGURATION": "",
+  "// SERVER CONFIGURATION": "",
   "server": {
     "type": "tcp",                    // "tcp" or "serial"
-    "address": "0.0.0.0",             // TCP bind address
-    "port": 502,                       // Modbus TCP port
-    "server_port": 5001,               // REST API port
-    "serial_port": "/dev/ttyUSB0",     // Serial port (if type="serial")
-    "serial_baudrate": 38400           // Serial baudrate (if type="serial")
+    "address": "0.0.0.0",             // TCP bind address (for TCP mode)
+    "port": 502,                       // Modbus TCP port (default: 502)
+    "server_port": 5001                // REST API port (default: 5001)
   },
+  "// MODBUS CONFIGURATION": "",
   "modbus": {
-    "slave_id": 240,                   // Modbus slave ID of your Neasmart system
-    "sync_on_startup": false,
-    "sync_batch_size": 100,
-    "circuit_breaker_failure_threshold": 5,
-    "circuit_breaker_recovery_timeout": 60,
-    "circuit_breaker_half_open_calls": 3
-  },
-  "// API SERVER CONFIGURATION": "",
-  "api": {
-    "host": "0.0.0.0",
-    "port": 5001,
-    "enable_auth": false,
-    "rate_limit_per_minute": 60,
-    "enable_cors": true,
-    "cors_origins": ["*"],
-    "request_timeout": 30,
-    "max_request_size": 1048576,
-    "temperature_unit": "C"
+    "slave_id": 240                    // Modbus slave ID of your Neasmart system (1-255, required)
   },
   "// GATEWAY CONFIGURATION": "",
   "gateway": {
-    "enabled": true,
-    "host": "127.0.0.1",
-    "port": 502,
-    "neasmart_slave_id": 240,
-    "timeout": 15,
-    "retry_attempts": 3,
-    "retry_delay": 3
+    "enabled": true,                   // Enable/disable gateway write-through
+    "host": "127.0.0.1",               // Waveshare gateway IP address
+    "port": 502,                       // Waveshare gateway port
+    "neasmart_slave_id": 240,          // Neasmart device slave ID
+    "timeout": 15,                     // Connection timeout in seconds
+    "retry_attempts": 3,               // Number of retry attempts on failure
+    "retry_delay": 3                   // Delay between retries in seconds
   },
   "// FALLBACK CONFIGURATION": "",
   "fallback": {
-    "disable_write_through_on_error": true,
-    "max_consecutive_errors": 3,
-    "error_reset_interval": 300
+    "disable_write_through_on_error": true,  // Automatically disable write-through on consecutive errors
+    "max_consecutive_errors": 3,              // Maximum consecutive errors before disabling
+    "error_reset_interval": 300              // Error reset interval in seconds
   },
   "// ZONES CONFIGURATION": "",
   "zones": {
     "structures": [
       {
-        "base_id": 1,
-        "base_label": "First Floor",
+        "base_id": 1,                  // Base ID (1-4) - must match your Neasmart system
+        "base_label": "First Floor",    // Human-readable label for this structure
         "zones": [
           { "id": 1, "label": "Living Room" },
           { "id": 2, "label": "Kitchen" },
@@ -137,108 +119,56 @@ The unified configuration file contains all application settings organized into 
         ]
       }
     ]
-  },
-  "// DATABASE CONFIGURATION": "",
-  "database": {
-    "path": "./data/registers.db",
-    "table_name": "holding_registers",
-    "enable_fallback": true,
-    "retry_max_attempts": 3,
-    "retry_base_delay": 0.1,
-    "retry_max_delay": 1.0,
-    "health_check_interval": 30
-  },
-  "// LOGGING CONFIGURATION": "",
-  "logging": {
-    "level": "INFO",
-    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    "file_path": "./data/gateway.log",
-    "max_file_size": 10485760,
-    "backup_count": 5,
-    "enable_console": true,
-    "enable_file": true
-  },
-  "// FEATURE FLAGS": "",
-  "features": {
-    "enable_health_endpoint": true,
-    "enable_metrics": true,
-    "enable_swagger": true,
-    "debug_mode": false
-  },
-  "// ADVANCED SETTINGS": "",
-  "advanced": {
-    "circuit_breaker_enabled": true,
-    "auto_discovery": false,
-    "performance_monitoring": true,
-    "cache_enabled": true,
-    "cache_ttl": 300
   }
 }
 ```
 
-**Key Configuration Sections**:
+**Configuration Sections**:
 
-- **`server`** - Server and Modbus connection settings (required)
-  - `type`: Connection type - `"tcp"` or `"serial"`
-  - `address`: TCP bind address (for TCP mode)
-  - `port`: Modbus TCP port (default: 502)
-  - `server_port`: REST API port (default: 5001)
-  - Serial settings (`serial_port`, `serial_baudrate`, etc.) for serial mode
+- **`server`** - Modbus server and REST API settings (required)
+  - `type`: Connection type - `"tcp"` for Modbus TCP or `"serial"` for Modbus RTU over serial
+  - `address`: TCP bind address (for TCP mode, default: `"0.0.0.0"`)
+  - `port`: Modbus TCP port (default: `502`)
+  - `server_port`: REST API server port (default: `5001`)
+  - **Note**: Serial port settings (baudrate, parity, etc.) are hardcoded in the application according to Neasmart specifications
 
-- **`modbus`** - Modbus protocol settings
-  - `slave_id`: Modbus slave ID of your Neasmart system (required)
-
-- **`api`** - REST API server configuration
-  - `host`: API server bind address
-  - `port`: API server port
-  - `enable_cors`: Enable CORS support
-  - `temperature_unit`: Temperature unit (`"C"` or `"F"`)
+- **`modbus`** - Modbus protocol settings (required)
+  - `slave_id`: Modbus slave ID of your Neasmart system (1-255, default: `240`)
 
 - **`gateway`** - Waveshare gateway connection settings
-  - `enabled`: Enable/disable gateway write-through
-  - `host`: Gateway IP address
-  - `port`: Gateway port
-  - `neasmart_slave_id`: Neasmart device slave ID
+  - `enabled`: Enable/disable gateway write-through (default: `true`)
+  - `host`: Waveshare gateway IP address - **This is different from `server.address`**:
+    - `server.address` is where **our Modbus server listens** (receives connections)
+    - `gateway.host` is where **our Modbus client connects** to the Waveshare hardware gateway
+    - Use `"127.0.0.1"` if the gateway is on the same machine, or the gateway's actual IP if on a different machine (default: `"127.0.0.1"`)
+  - `port`: Waveshare gateway port (default: `502`)
+  - `neasmart_slave_id`: Neasmart device slave ID (default: `240`)
+  - `timeout`: Connection timeout in seconds (default: `15`)
+  - `retry_attempts`: Number of retry attempts on failure (default: `3`)
+  - `retry_delay`: Delay between retries in seconds (default: `3`)
 
 - **`fallback`** - Error handling and fallback behavior
-  - `disable_write_through_on_error`: Auto-disable gateway on errors
-  - `max_consecutive_errors`: Max errors before disabling
-  - `error_reset_interval`: Error reset interval in seconds
+  - `disable_write_through_on_error`: Automatically disable gateway write-through on consecutive errors (default: `true`)
+  - `max_consecutive_errors`: Maximum consecutive errors before disabling (default: `3`)
+  - `error_reset_interval`: Error reset interval in seconds (default: `300`)
 
 - **`zones`** - Building structure and zone definitions (required)
   - `structures`: Array of building structures with zones
+  - Each structure contains:
+    - `base_id`: Base ID (1-4) - must match your physical Neasmart system configuration
+    - `base_label`: Human-readable label for the structure
+    - `zones`: Array of zone objects with `id` and `label`
   - **Important**: The `base_id` and zone `id` values must match your physical Neasmart system configuration
-
-- **`database`** - Database persistence settings
-  - `path`: SQLite database file path
-  - `enable_fallback`: Enable database fallback mode
-
-- **`logging`** - Logging configuration
-  - `level`: Log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`)
-  - `file_path`: Log file path
-  - `enable_console`: Enable console logging
-  - `enable_file`: Enable file logging
-
-- **`features`** - Feature flags
-  - `enable_health_endpoint`: Enable `/api/health` endpoint
-  - `enable_swagger`: Enable Swagger UI documentation
-  - `debug_mode`: Enable debug mode
-
-- **`advanced`** - Advanced settings
-  - `circuit_breaker_enabled`: Enable circuit breaker pattern
-  - `cache_enabled`: Enable response caching
-  - `cache_ttl`: Cache time-to-live in seconds
 
 **Common configurations**:
 - **Modbus TCP**: Set `server.type: "tcp"` and configure `server.address` and `server.port`
-- **Modbus Serial**: Set `server.type: "serial"` and configure `server.serial_port` and `server.serial_baudrate`
+- **Modbus Serial**: Set `server.type: "serial"` (serial port settings are automatically configured according to Neasmart specifications)
 
 ### Environment Variables
 
 You can override configuration values using environment variables with the format:
 - `NEASMART_<SECTION>_<KEY>` (e.g., `NEASMART_SERVER_TYPE=tcp`)
-- `NEASMART_API_PORT=5001`
-- `NEASMART_DATABASE_PATH=./data/registers.db`
+- `NEASMART_SERVER_PORT=5001`
 
 ### Configuration Examples
 
